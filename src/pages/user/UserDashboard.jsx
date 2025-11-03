@@ -150,7 +150,6 @@ const UserDashboard = () => {
                 </p>
               </div>
             )}
-            <Button text="Adjust interests"/>
           </div>
         </div>
       </div>
