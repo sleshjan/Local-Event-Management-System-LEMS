@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import SearchInput from "../../components/common/SearchInput";
-import EventCard from "../../components/common/EventCard";
+import EventCard from "../../components/events/EventCard";
 import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
 import { mockEvents } from "../../data/eventsData";
@@ -140,7 +140,7 @@ const UserDashboard = () => {
             {filteredEvents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
+                  <EventCard key={event.id} event={event} role='user'/>
                 ))}
               </div>
             ) : (

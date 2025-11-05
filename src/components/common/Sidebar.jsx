@@ -1,8 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, KeyRound, User, LogOut } from 'lucide-react';
-import Logo from './Logo';
-import InterestTag from './InterestTag';
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Settings,
+  KeyRound,
+  LogOut,
+  LayoutDashboard,
+  FolderKanban,
+  User,
+} from "lucide-react";
+import Logo from "./Logo";
+import InterestTag from "./InterestTag";
 
 const Sidebar = ({ userInterests = [] }) => {
   const navigate = useNavigate();
@@ -11,8 +18,8 @@ const Sidebar = ({ userInterests = [] }) => {
   const dropdownRef = useRef(null);
 
   const menuItems = [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'My Events', path: '/my-events' }
+    { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+    { name: "My Events", path: "/my-events", icon: FolderKanban },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -25,26 +32,26 @@ const Sidebar = ({ userInterests = [] }) => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleResetPassword = () => {
     setIsDropdownOpen(false);
     // console.log('Reset password clicked');
-    navigate('/reset-password');
+    navigate("/reset-password");
   };
 
   const handleBeOrganizer = () => {
     setIsDropdownOpen(false);
     // console.log('Be an organizer clicked');
-    navigate('/become-organizer');
+    navigate("/become-organizer");
   };
 
   const handleLogout = () => {
     setIsDropdownOpen(false);
     localStorage.clear();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -56,19 +63,23 @@ const Sidebar = ({ userInterests = [] }) => {
 
       {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-        {menuItems.map((item) => (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={`w-full text-left px-4 py-3 rounded-xl font-medium transition-colors ${
-              isActive(item.path)
-                ? 'bg-purple-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {item.name}
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
+                isActive(item.path)
+                  ? "bg-purple-600 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span>{item.name}</span>
+            </button>
+          );
+        })}
 
         {/* Your Interests Section */}
         {userInterests.length > 0 && (

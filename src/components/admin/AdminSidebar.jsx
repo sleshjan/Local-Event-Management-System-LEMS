@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, KeyRound, LogOut, LayoutDashboard, Inbox } from 'lucide-react';
+import { Settings, KeyRound, LogOut, LayoutDashboard, FolderKanban, Users, Inbox } from 'lucide-react';
 import Logo from '../common/Logo';
 
 const AdminSidebar = () => {
@@ -11,9 +11,19 @@ const AdminSidebar = () => {
 
   const menuItems = [
     { 
-      name: 'Dashboard', 
+      name: 'Events', 
       path: '/admin/dashboard',
       icon: LayoutDashboard
+    },
+    { 
+      name: 'Manage Users', 
+      path: '/admin/users',
+      icon: Users
+    },
+    { 
+      name: 'Manage Categories', 
+      path: '/admin/categories',
+      icon: FolderKanban
     },
     { 
       name: 'Organizer requests', 
