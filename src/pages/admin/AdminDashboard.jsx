@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import SearchInput from "../../components/common/SearchInput";
@@ -84,11 +84,11 @@ const AdminDashboard = () => {
             {/* Create Event Button - Desktop */}
             <div className="hidden sm:block">
               <button
-                onClick={handleCreateEvent}
-                className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors"
+                onClick={() => navigate("/admin/create-event")}
+                className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
               >
                 <Plus className="w-5 h-5" />
-                <span>Create Event</span>
+                Create
               </button>
             </div>
           </div>
@@ -96,11 +96,11 @@ const AdminDashboard = () => {
           {/* Mobile Create Event Button */}
           <div className="sm:hidden mt-3">
             <button
-              onClick={handleCreateEvent}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors"
+              onClick={() => navigate("/admin/create-event")}
+              className="w-full flex items-center justify-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
             >
               <Plus className="w-5 h-5" />
-              <span>Create Event</span>
+              Create Event
             </button>
           </div>
         </div>
@@ -112,16 +112,23 @@ const AdminDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               <div className="bg-white rounded-2xl p-6 border border-gray-200">
                 <p className="text-sm text-gray-600 mb-1">Total Events</p>
-                <p className="text-3xl font-bold text-gray-900">{events.length}</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {events.length}
+                </p>
               </div>
               <div className="bg-white rounded-2xl p-6 border border-gray-200">
                 <p className="text-sm text-gray-600 mb-1">Active Events</p>
-                <p className="text-3xl font-bold text-purple-600">{events.length}</p>
+                <p className="text-3xl font-bold text-purple-600">
+                  {events.length}
+                </p>
               </div>
               <div className="bg-white rounded-2xl p-6 border border-gray-200">
                 <p className="text-sm text-gray-600 mb-1">Total Attendees</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {events.reduce((sum, event) => sum + (event.attendees || 0), 0)}
+                  {events.reduce(
+                    (sum, event) => sum + (event.attendees || 0),
+                    0
+                  )}
                 </p>
               </div>
             </div>
@@ -133,7 +140,8 @@ const AdminDashboard = () => {
               </h2>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">
-                  {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'}
+                  {filteredEvents.length}{" "}
+                  {filteredEvents.length === 1 ? "event" : "events"}
                 </span>
               </div>
             </div>

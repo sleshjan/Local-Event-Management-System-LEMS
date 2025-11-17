@@ -1,28 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import SearchInput from "../../components/common/SearchInput";
 import EventCard from "../../components/events/EventCard";
 import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
-import { mockEvents } from "../../data/eventsData";
+import { getEventsWithViewCounts } from "../../data/eventsData";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [events] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
 
-  // Mock user interests
-  // const userInterests = [
-  //   "Live Music",
-  //   "Tech Meetups",
-  //   "Food & Drink",
-  //   "Outdoors",
-  //   "Art & Design",
-  // ];
   // Get user interests from localStorage
   const [userInterests, setUserInterests] = useState([]);
+  
   useEffect(() => {
     // Load interests from localStorage
     const storedInterests = localStorage.getItem("userInterests");
@@ -34,8 +28,13 @@ const UserDashboard = () => {
     }
   }, []);
 
-  // Dynamic events data - This structure matches your backend
-  // Enhanced events data with full details for event details page
+  // Load events with current view counts - runs on every location change
+  useEffect(() => {
+    console.log('Loading events with view counts...');
+    const eventsWithViews = getEventsWithViewCounts();
+    console.log('Events loaded:', eventsWithViews);
+    setEvents(eventsWithViews);
+  }, [location]); // Re-run when location changes (i.e., when navigating back)
 
   // Filter events based on search
   const filteredEvents = events.filter(

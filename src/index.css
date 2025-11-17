@@ -1,3 +1,4 @@
+/* @import url('https://fonts.googleapis.com/css2?family=Arizonia&display=swap'); */
 @import "tailwindcss";
 
 body {
@@ -16,3 +17,9 @@ body {
 button, input, textarea, select {
   font-family: inherit;
 }
+
+/* .arizonia-regular {
+  font-family: "Arizonia", cursive;
+  font-weight: 500;
+  font-style: normal;
+} */

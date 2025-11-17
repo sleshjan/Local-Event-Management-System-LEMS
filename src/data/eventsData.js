@@ -1,4 +1,6 @@
-export const mockEvents = [
+import { getEventViewCount } from '../utils/viewCounter';
+
+export const baseEvents = [
   {
     id: 1,
     title: "Summer Music Festival 2024",
@@ -12,6 +14,7 @@ export const mockEvents = [
     categories: ["Music", "Concert", "Outdoors"],
     price: 45,
     duration: "5 hours",
+    viewCount: 0,
     organizer: "NYC Music Events",
     organizerBio: "Bringing the best live music experiences to New York",
     description: `Join us for an unforgettable evening of live music under the stars! This year's Summer Music Festival features an incredible lineup of local and international artists across multiple stages.
@@ -40,6 +43,7 @@ Gates open at 5:00 PM. Rain or shine event.`,
     categories: ["Tech", "Workshop", "AI & Data"],
     price: 0,
     duration: "3 hours",
+    viewCount: 0,
     organizer: "Tech Innovators",
     organizerBio: "Empowering developers with cutting-edge technology",
     description: `Learn the fundamentals of AI and Machine Learning in this hands-on workshop designed for beginners and intermediate developers.
@@ -67,6 +71,7 @@ Bring your laptop! Prerequisites: Basic Python knowledge recommended but not req
     categories: ["Art & Design", "Culture", "Social"],
     price: 0,
     duration: "4 hours",
+    viewCount: 0,
     organizer: "Downtown Arts Collective",
     organizerBio: "Celebrating local artists and creative community",
     description: `Explore the vibrant Arts District during our monthly First Friday Art Walk! Gallery openings, live music, street performances, and more.
@@ -94,6 +99,7 @@ Free and open to all ages. Self-guided walking tour through the district.`,
     categories: ["Outdoors", "Hiking & Outdoors", "Wellness"],
     price: 10,
     duration: "3 hours",
+    viewCount: 0,
     organizer: "Mountain Wellness Group",
     organizerBio: "Connecting nature lovers in the Boulder community",
     description: `Start your day with breathtaking views! Join fellow outdoor enthusiasts for a sunrise hike followed by coffee and conversation.
@@ -121,6 +127,7 @@ Difficulty: Moderate. Elevation gain: 800ft. Please wear appropriate hiking shoe
     categories: ["Tech", "Workshop", "AI & Data", "Networking"],
     price: 299,
     duration: "9 hours",
+    viewCount: 0,
     organizer: "TechForward Events",
     organizerBio:
       "Leading tech conferences and workshops for professionals worldwide",
@@ -152,6 +159,7 @@ Breakfast and lunch included. Laptop required for workshops.`,
     categories: ["Food & Drink", "Culture", "Festival"],
     price: 65,
     duration: "8 hours",
+    viewCount: 0,
     organizer: "Seattle Culinary Collective",
     organizerBio:
       "Celebrating local flavors and culinary excellence since 2015",
@@ -183,6 +191,7 @@ General admission includes tasting glass and 10 sample tickets. Additional ticke
     categories: ["Wellness", "Fitness & Yoga", "Outdoors", "Meditation"],
     price: 120,
     duration: "6 hours",
+    viewCount: 0,
     organizer: "Zen Wellness Co.",
     organizerBio:
       "Creating transformative wellness experiences for mind, body, and soul",
@@ -214,6 +223,7 @@ Yoga mat and props provided. Please bring water bottle, sunscreen, and comfortab
     categories: ["Art & Design", "Culture", "Networking", "Photography"],
     price: 35,
     duration: "5 hours",
+    viewCount: 0,
     organizer: "LA Arts Collective",
     organizerBio:
       "Promoting emerging artists and creative community since 2010",
@@ -246,6 +256,7 @@ Comfortable walking shoes recommended. Free parking guide included with ticket. 
     categories: ["Tech", "Networking", "Startups", "Business"],
     price: 175,
     duration: "7 hours",
+    viewCount: 0,
     organizer: "Austin Startup Alliance",
     organizerBio:
       "Connecting entrepreneurs and fostering innovation in the startup ecosystem",
@@ -277,6 +288,7 @@ Business casual attire. Bring plenty of business cards. Pitch deck submission op
     categories: ["Art & Design", "Culture", "Networking", "Photography"],
     price: 35,
     duration: "5 hours",
+    viewCount: 0,
     organizer: "LA Arts Collective",
     organizerBio:
       "Promoting emerging artists and creative community since 2010",
@@ -296,3 +308,20 @@ What to expect:
 Comfortable walking shoes recommended. Free parking guide included with ticket. Photography encouraged!`,
   },
 ];
+
+// Export events with live view counts
+export const getEventsWithViewCounts = () => {
+  console.log('getEventsWithViewCounts called');
+  const events = baseEvents.map(event => {
+    const viewCount = getEventViewCount(event.id);
+    console.log(`Event ${event.id} view count:`, viewCount);
+    return {
+      ...event,
+      viewCount: viewCount
+    };
+  });
+  return events;
+};
+
+// Also export as mockEvents for backward compatibility
+export const mockEvents = getEventsWithViewCounts();

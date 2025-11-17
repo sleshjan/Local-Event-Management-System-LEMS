@@ -21,8 +21,8 @@ const AdminEventCard = ({ event, onDelete }) => {
 
   const handleEdit = () => {
     console.log("Edit event:", id);
-    // Navigate to edit page (create this later)
-    // navigate(`/admin/events/edit/${id}`, { state: { event } });
+    // Navigate to edit page
+    navigate(`/admin/edit-event/${id}`, { state: { event } });
   };
 
   const handleDelete = () => {

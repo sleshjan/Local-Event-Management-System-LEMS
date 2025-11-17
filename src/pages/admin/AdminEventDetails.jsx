@@ -42,8 +42,8 @@ const AdminEventDetails = () => {
   const handleEdit = () => {
     console.log("Editing event:", event.id);
     // Navigate to edit event page (create this later)
-    // navigate(`/admin/events/edit/${event.id}`, { state: { event } });
-    alert("Edit functionality - Navigate to edit page");
+    navigate(`/admin/edit-event/${event.id}`, { state: { event } });
+    // alert("Edit functionality - Navigate to edit page");
   };
 
   const handleDelete = () => {
@@ -316,7 +316,7 @@ const AdminEventDetails = () => {
 
                   {/* Admin Actions */}
                   <div className="space-y-3">
-                    <button
+                    {/* <button
                       onClick={handleEdit}
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors"
                     >
@@ -329,13 +329,13 @@ const AdminEventDetails = () => {
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete Event
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href);
                         alert("Event link copied to clipboard!");
                       }}
-                      className="w-full px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
+                      className="w-full px-6 py-3 bg-gray-500 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors"
                     >
                       Copy Event Link
                     </button>

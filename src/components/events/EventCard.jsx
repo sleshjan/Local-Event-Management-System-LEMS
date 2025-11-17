@@ -1,9 +1,9 @@
-import { Calendar, MapPin, Users } from 'lucide-react';
+import { Calendar, MapPin, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import InterestTag from '../common/InterestTag';
 import Button from '../common/Button';
 
-const EventCard = ({ event }) => {
+const EventCard = ({ event, role = 'user' }) => {
   const navigate = useNavigate();
   
   const { 
@@ -13,12 +13,17 @@ const EventCard = ({ event }) => {
     date, 
     location, 
     attendees, 
-    categories
+    categories,
+    viewCount = 0
   } = event;
 
   const handleViewDetails = () => {
-    // Navigate to user event details page
-    navigate(`/event/${id}`, { state: { event } });
+    // Navigate to event details page based on role
+    if (role === 'user') {
+      navigate(`/event/${id}`, { state: { event } });
+    } else if (role === 'admin') {
+      navigate(`/admin/event/${id}`, { state: { event } });
+    }
   };
 
   return (
@@ -67,21 +72,19 @@ const EventCard = ({ event }) => {
             </div>
           )}
 
-          {/* Attendees */}
-          {attendees !== undefined && attendees !== null && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Users className="w-4 h-4 shrink-0" />
-              <span className="text-sm">
-                {attendees} {attendees === 1 ? 'person' : 'people'} attending
-              </span>
-            </div>
-          )}
+          {/* View Count */}
+          <div className="flex items-center gap-2 text-gray-600">
+            <Eye className="w-4 h-4 shrink-0" />
+            <span className="text-sm">
+              {viewCount.toLocaleString()} {viewCount === 1 ? 'view' : 'views'}
+            </span>
+          </div>
         </div>
 
         {/* View Details Button */}
         <div className="mt-4">
           <Button 
-            text="View Details" 
+            text={role === 'admin' ? 'Manage' : 'View Details'}
             fullWidth 
             onClick={handleViewDetails}
           />

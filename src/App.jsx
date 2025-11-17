@@ -12,6 +12,8 @@ import AdminEventDetails from "./pages/admin/AdminEventDetails";
 import ManageCategories from "./pages/admin/ManageCategories";
 import ManageUsers from "./pages/admin/ManageUsers";
 import OrganizerRequests from "./pages/admin/OrganizerRequests";
+import CreateEvent from './pages/admin/CreateEvent';
+import EditEvent from './pages/admin/EditEvent';
 
 function App() {
   return (
@@ -36,6 +38,8 @@ function App() {
         <Route path="/admin/users" element={<ManageUsers />} />
         <Route path="/admin/events/:id" element={<AdminEventDetails />} />
         <Route path="/admin/organizer-requests" element={<OrganizerRequests />} />
+        <Route path="/admin/create-event" element={<CreateEvent />} />
+        <Route path="/admin/edit-event/:id" element={<EditEvent />} />
       </Routes>
     </BrowserRouter>
   );
