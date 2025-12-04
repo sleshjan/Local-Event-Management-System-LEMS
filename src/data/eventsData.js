@@ -1,4 +1,4 @@
-import { getEventViewCount } from '../utils/viewCounter';
+
 
 export const baseEvents = [
   {
@@ -309,19 +309,4 @@ Comfortable walking shoes recommended. Free parking guide included with ticket. 
   },
 ];
 
-// Export events with live view counts
-export const getEventsWithViewCounts = () => {
-  console.log('getEventsWithViewCounts called');
-  const events = baseEvents.map(event => {
-    const viewCount = getEventViewCount(event.id);
-    console.log(`Event ${event.id} view count:`, viewCount);
-    return {
-      ...event,
-      viewCount: viewCount
-    };
-  });
-  return events;
-};
-
-// Also export as mockEvents for backward compatibility
-export const mockEvents = getEventsWithViewCounts();
+export const mockEvents = baseEvents;

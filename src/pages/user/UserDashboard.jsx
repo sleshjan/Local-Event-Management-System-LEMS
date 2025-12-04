@@ -5,7 +5,7 @@ import SearchInput from "../../components/common/SearchInput";
 import EventCard from "../../components/events/EventCard";
 import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
-import { getEventsWithViewCounts } from "../../data/eventsData";
+import { mockEvents } from "../../data/eventsData";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
@@ -16,7 +16,7 @@ const UserDashboard = () => {
 
   // Get user interests from localStorage
   const [userInterests, setUserInterests] = useState([]);
-  
+
   useEffect(() => {
     // Load interests from localStorage
     const storedInterests = localStorage.getItem("userInterests");
@@ -28,13 +28,11 @@ const UserDashboard = () => {
     }
   }, []);
 
-  // Load events with current view counts - runs on every location change
+  // Load events
   useEffect(() => {
-    console.log('Loading events with view counts...');
-    const eventsWithViews = getEventsWithViewCounts();
-    console.log('Events loaded:', eventsWithViews);
-    setEvents(eventsWithViews);
-  }, [location]); // Re-run when location changes (i.e., when navigating back)
+    console.log('Loading events...');
+    setEvents(mockEvents);
+  }, [location]);
 
   // Filter events based on search
   const filteredEvents = events.filter(
@@ -139,7 +137,7 @@ const UserDashboard = () => {
             {filteredEvents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.map((event) => (
-                  <EventCard key={event.id} event={event} role='user'/>
+                  <EventCard key={event.id} event={event} role='user' />
                 ))}
               </div>
             ) : (

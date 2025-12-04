@@ -3,15 +3,15 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from '../../components/common/Sidebar';
 import Button from '../../components/common/Button';
 import InterestTag from '../../components/common/InterestTag';
-import { Menu, X, Calendar, MapPin, Users, Clock, DollarSign, User as UserIcon, ArrowLeft, Eye } from 'lucide-react';
-import { incrementViewCount, markEventAsViewed, hasUserViewedEvent, getEventViewCount } from '../../utils/viewCounter';
+import { Menu, X, Calendar, MapPin, Users, Clock, DollarSign, User as UserIcon, ArrowLeft } from 'lucide-react';
+
 
 const EventDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [eventData, setEventData] = useState(null);
-  
+
   // Get event data from navigation state
   const event = location.state?.event;
 
@@ -25,37 +25,9 @@ const EventDetails = () => {
     }
   }, []);
 
-  // Increment view count when page loads
   useEffect(() => {
     if (event) {
-      const userId = 'current-user'; // In real app, get from auth context
-      
-      // Check if user has already viewed this event
-      const alreadyViewed = hasUserViewedEvent(event.id, userId);
-      
-      if (!alreadyViewed) {
-        // Increment global view count
-        const newViewCount = incrementViewCount(event.id);
-        
-        // Mark event as viewed by this user
-        markEventAsViewed(event.id, userId);
-        
-        console.log(`View count incremented for event ${event.id}. New count: ${newViewCount}`);
-        
-        // Update local event data with new view count
-        setEventData({
-          ...event,
-          viewCount: newViewCount
-        });
-      } else {
-        // User already viewed, just get current count
-        const currentViewCount = getEventViewCount(event.id);
-        setEventData({
-          ...event,
-          viewCount: currentViewCount
-        });
-        console.log(`User already viewed event ${event.id}. Current count: ${currentViewCount}`);
-      }
+      setEventData(event);
     }
   }, [event]);
 
@@ -232,16 +204,6 @@ const EventDetails = () => {
                     </div>
                   )}
 
-                  <div className="flex items-start gap-3">
-                    <Eye className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium text-gray-900">Views</p>
-                      <p className="text-sm text-gray-600">
-                        {eventData.viewCount.toLocaleString()} {eventData.viewCount === 1 ? 'view' : 'views'}
-                      </p>
-                    </div>
-                  </div>
-
                   {eventData.duration && (
                     <div className="flex items-start gap-3">
                       <Clock className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
@@ -266,10 +228,10 @@ const EventDetails = () => {
 
                   <div className="border-t border-gray-200"></div>
 
-                  <Button 
-                    text="Join Event" 
+                  <Button
+                    text="Join Event"
                     onClick={handleJoinEvent}
-                    fullWidth 
+                    fullWidth
                   />
 
                   <button

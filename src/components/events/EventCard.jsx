@@ -1,20 +1,19 @@
-import { Calendar, MapPin, Eye } from 'lucide-react';
+import { Calendar, MapPin, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import InterestTag from '../common/InterestTag';
 import Button from '../common/Button';
 
 const EventCard = ({ event, role = 'user' }) => {
   const navigate = useNavigate();
-  
-  const { 
+
+  const {
     id,
-    image, 
-    title, 
-    date, 
-    location, 
-    attendees, 
-    categories,
-    viewCount = 0
+    image,
+    title,
+    date,
+    location,
+    attendees,
+    categories
   } = event;
 
   const handleViewDetails = () => {
@@ -72,20 +71,20 @@ const EventCard = ({ event, role = 'user' }) => {
             </div>
           )}
 
-          {/* View Count */}
+          {/* Attendees Count */}
           <div className="flex items-center gap-2 text-gray-600">
-            <Eye className="w-4 h-4 shrink-0" />
+            <Users className="w-4 h-4 shrink-0" />
             <span className="text-sm">
-              {viewCount.toLocaleString()} {viewCount === 1 ? 'view' : 'views'}
+              {attendees} {attendees === 1 ? 'attendee' : 'attendees'}
             </span>
           </div>
         </div>
 
         {/* View Details Button */}
         <div className="mt-4">
-          <Button 
+          <Button
             text={role === 'admin' ? 'Manage' : 'View Details'}
-            fullWidth 
+            fullWidth
             onClick={handleViewDetails}
           />
         </div>

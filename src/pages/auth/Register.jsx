@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { authService } from "../../services/authService"; // ← Add this import
 import Logo from "../../components/common/Logo";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
@@ -23,11 +24,14 @@ const Register = () => {
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [apiError, setApiError] = useState(""); // ← Add API error state
+  const [loading, setLoading] = useState(false); // ← Add loading state
 
   const [districts, setDistricts] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [wards, setWards] = useState([]);
 
+  // ... (keep all your existing useEffect hooks)
   useEffect(() => {
     if (formData.province) {
       const selectedProvince = locationData[formData.province];
@@ -64,35 +68,7 @@ const Register = () => {
     }
   }, [formData.municipality]);
 
-  // const provinces = [
-  //   'Province No. 1',
-  //   'Madhesh Province',
-  //   'Bagmati Province',
-  //   'Gandaki Province',
-  //   'Lumbini Province',
-  //   'Karnali Province',
-  //   'Sudurpashchim Province'
-  // ];
-  // const districts = [
-  //   'Kathmandu',
-  //   'Lalitpur',
-  //   'Bhaktapur',
-  //   'Chitwan',
-  //   'Pokhara',
-  //   'Dharan',
-  //   'Butwal',
-  //   'Biratnagar'
-  // ];
-  // const municipalities = [
-  //   'Kathmandu Metropolitan City',
-  //   'Lalitpur Metropolitan City',
-  //   'Bhaktapur Municipality',
-  //   'Kirtipur Municipality',
-  //   'Madhyapur Thimi Municipality'
-  // ];
-
-  // Validation functions
-
+  // ... (keep all your validation functions)
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -191,8 +167,10 @@ const Register = () => {
     return error;
   };
 
-  const handleSubmit = (e) => {
+  // ← UPDATED handleSubmit with API integration
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError(""); // Clear previous API errors
 
     // Validate all fields
     const fieldNames = [
@@ -236,9 +214,33 @@ const Register = () => {
       return;
     }
 
-    // Success - navigate to interest selection
-    console.log("Register submitted:", formData);
-    navigate("/select-interests");
+    // API Call
+    setLoading(true);
+    
+    try {
+      const response = await authService.register(formData);
+      
+      console.log("Registration Response:", response); // Debug
+      
+      // Registration successful - navigate to interest selection
+      navigate("/select-interests");
+      
+    } catch (error) {
+      console.error("Registration failed:", error);
+      
+      // Handle different error types
+      if (error.message.includes('422')) {
+        setApiError('This email or username is already taken. Please use different credentials.');
+      } else if (error.message.includes('400')) {
+        setApiError('Invalid registration data. Please check your inputs.');
+      } else if (error.message.includes('Network')) {
+        setApiError('Network error. Please check your connection.');
+      } else {
+        setApiError('Registration failed. Please try again later.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -263,8 +265,16 @@ const Register = () => {
           <p className="text-gray-600">Register to discover events.</p>
         </div>
 
+        {/* ← Add API Error Display */}
+        {apiError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <p className="text-red-600 text-sm">{apiError}</p>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-2">
+          {/* ... (keep all your existing form fields) */}
           {/* Account Details Section */}
           <div className="rounded-2xl p-3 md:p-3 space-y-5">
             <h2 className="text-xl font-semibold text-gray-900 my-2">
@@ -355,7 +365,7 @@ const Register = () => {
                   onBlur={handleBlur}
                   className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
                 >
-                  <option value="">Select province{/*प्रदेश छान्नुहोस्*/}</option>
+                  <option value="">Select province</option>
                   {Object.keys(locationData).map((province) => (
                     <option key={province} value={province}>
                       {province}
@@ -377,16 +387,15 @@ const Register = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   disabled={!formData.province}
-                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select district{/*जिल्ला छान्नुहोस्*/}</option>
+                  <option value="">Select district</option>
                   {districts.map((district) => (
                     <option key={district} value={district}>
                       {district}
                     </option>
                   ))}
                 </select>
-
                 {touched.district && errors.district && (
                   <p className="text-red-500 text-sm mt-1">{errors.district}</p>
                 )}
@@ -405,16 +414,15 @@ const Register = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   disabled={!formData.district}
-                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select municipality{/* नगरपालिका/गाउँपालिका छान्नुहोस्*/}</option>
+                  <option value="">Select municipality</option>
                   {municipalities.map((municipality) => (
                     <option key={municipality} value={municipality}>
                       {municipality}
                     </option>
                   ))}
                 </select>
-
                 {touched.municipality && errors.municipality && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors.municipality}
@@ -432,16 +440,15 @@ const Register = () => {
                   onChange={handleChange}
                   onBlur={handleBlur}
                   disabled={!formData.municipality}
-                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select ward{/* वडा नम्बर छान्नुहोस्*/}</option>
+                  <option value="">Select ward</option>
                   {wards.map((w) => (
                     <option key={w} value={w}>
                       {w}
                     </option>
                   ))}
                 </select>
-{/*  */}
                 {touched.ward && errors.ward && (
                   <p className="text-red-500 text-sm mt-1">{errors.ward}</p>
                 )}
@@ -480,8 +487,13 @@ const Register = () => {
             )}
           </div>
 
-          {/* Create Account Button */}
-          <Button text="Create account" type="submit" fullWidth />
+          {/* ← Updated Create Account Button with loading state */}
+          <Button 
+            text={loading ? "Creating account..." : "Create account"} 
+            type="submit" 
+            fullWidth 
+            disabled={loading}
+          />
 
           {/* Sign In Link */}
           <div className="text-center">

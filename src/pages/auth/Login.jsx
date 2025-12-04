@@ -1,21 +1,24 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Logo from '../../components/common/Logo';
-import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Logo from "../../components/common/Logo";
+import Input from "../../components/common/Input";
+import Button from "../../components/common/Button";
 import { Link } from "react-router-dom";
+import { authService } from "../../services/authService"; // Add this import
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [apiError, setApiError] = useState(""); // Add API error state
 
-  // Validation functions
+  // Validation functions (keep as is)
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -27,17 +30,22 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     setFormData({
       ...formData,
-      [name]: value
+      [name]: value,
     });
+
+    // Clear API error when user types
+    if (apiError) {
+      setApiError("");
+    }
 
     // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: ''
+        [name]: "",
       });
     }
   };
@@ -46,52 +54,53 @@ const Login = () => {
     const { name } = e.target;
     setTouched({
       ...touched,
-      [name]: true
+      [name]: true,
     });
     validateField(name, formData[name]);
   };
 
   const validateField = (name, value) => {
-    let error = '';
+    let error = "";
 
     switch (name) {
-      case 'email':
+      case "email":
         if (!value) {
-          error = 'Email is required';
+          error = "Email is required";
         } else if (!validateEmail(value)) {
-          error = 'Please enter a valid email';
+          error = "Please enter a valid email";
         }
         break;
-      case 'password':
+      case "password":
         if (!value) {
-          error = 'Password is required';
+          error = "Password is required";
         } else if (!validatePassword(value)) {
-          error = 'Password must be at least 8 characters';
+          error = "Password must be at least 8 characters";
         }
         break;
       default:
         break;
     }
 
-    setErrors(prev => ({
+    setErrors((prev) => ({
       ...prev,
-      [name]: error
+      [name]: error,
     }));
 
     return error;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
+    // Make this async
     e.preventDefault();
 
     // Validate all fields
-    const emailError = validateField('email', formData.email);
-    const passwordError = validateField('password', formData.password);
+    const emailError = validateField("email", formData.email);
+    const passwordError = validateField("password", formData.password);
 
     // Mark all fields as touched
     setTouched({
       email: true,
-      password: true
+      password: true,
     });
 
     // If there are errors, don't submit
@@ -99,10 +108,54 @@ const Login = () => {
       return;
     }
 
-    // Success - proceed with login
-    console.log('Login submitted:', formData);
-    // alert('Login successful! (This is where you would call your API)');
-    navigate('/dashboard'); // Navigate after successful login
+    // Start loading
+    setLoading(true);
+    setApiError("");
+
+    //  const response = await authService.login({
+    //         email: formData.email,
+    //         password: formData.password
+    //       });
+
+    try {
+      const response = await authService.login(formData); // ← Use authService.login
+
+      console.log("API Response:", response); // Debug
+
+      // Access role from response.data
+      const userRole = response.data?.role;
+
+      // Store user data
+      if (response.data) {
+        localStorage.setItem("user", JSON.stringify(response.data));
+      }
+
+      // Store token if exists
+      if (response.token) {
+        localStorage.setItem("token", response.token);
+      }
+
+      // Navigate based on role
+      if (userRole === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard"); // Default for normal users
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+
+      if (error.message.includes("401")) {
+        setApiError("Invalid email or password. Please try again.");
+      } else if (error.message.includes("422")) {
+        setApiError("Please check your input and try again.");
+      } else if (error.message.includes("Network")) {
+        setApiError("Network error. Please check your connection.");
+      } else {
+        setApiError("Login failed. Please try again later.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -123,6 +176,13 @@ const Login = () => {
           </p>
         </div>
 
+        {/* API Error Alert */}
+        {apiError && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <p className="text-sm">{apiError}</p>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Email Input */}
@@ -135,6 +195,7 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
+              disabled={loading} // Disable when loading
             />
             {touched.email && errors.email && (
               <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -151,6 +212,7 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               onBlur={handleBlur}
+              disabled={loading} // Disable when loading
             />
             {touched.password && errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>
@@ -161,24 +223,29 @@ const Login = () => {
           <div className="flex justify-end">
             <Link
               to="/forgot-password"
-              className="text-sm text-purple-600 hover:underline "
+              className="text-sm text-purple-600 hover:underline"
             >
               Forgot password?
             </Link>
-            </div>
+          </div>
 
           {/* Sign In Button */}
-          <Button text="Sign in" type="submit" fullWidth />
+          <Button
+            text={loading ? "Signing in..." : "Sign in"}
+            type="submit"
+            fullWidth
+            disabled={loading}
+          />
 
           {/* Create Account Link */}
           <div className="text-center">
             <span className="text-gray-600 text-sm">
-              Don't have an account?{' '}
+              Don't have an account?{" "}
             </span>
 
             {/* Link to register */}
-             <Link
-              to = '/register'
+            <Link
+              to="/register"
               className="text-sm text-purple-600 hover:underline font-medium"
             >
               Create one
