@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import EventForm from '../../components/events/EventForm';
-import { baseEvents } from '../../data/eventsData';
+import { eventService } from '../../services/eventService';
 
 const EditEvent = () => {
   const { id } = useParams();
@@ -13,17 +13,20 @@ const EditEvent = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In real app: fetch event from API
-    const event = baseEvents.find(e => e.id === parseInt(id));
-    
-    if (!event) {
-      alert('Event not found');
-      navigate('/admin/dashboard');
-      return;
-    }
+    const fetchEvent = async () => {
+      try {
+        const response = await eventService.getEvent(id);
+        const event = response.data || response;
+        setEventData(event);
+      } catch (error) {
+        alert("Failed to load event");
+        navigate('/admin/dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setEventData(event);
-    setLoading(false);
+    fetchEvent();
   }, [id, navigate]);
 
   if (loading) {

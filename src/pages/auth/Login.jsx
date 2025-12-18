@@ -4,7 +4,8 @@ import Logo from "../../components/common/Logo";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { Link } from "react-router-dom";
-import { authService } from "../../services/authService"; // Add this import
+import { authService } from "../../services/authService";
+import { parseApiError } from "../../services/api";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,10 +16,10 @@ const Login = () => {
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-  const [loading, setLoading] = useState(false); // Add loading state
-  const [apiError, setApiError] = useState(""); // Add API error state
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState("");
 
-  // Validation functions (keep as is)
+  // Validation functions
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -90,7 +91,6 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    // Make this async
     e.preventDefault();
 
     // Validate all fields
@@ -112,47 +112,21 @@ const Login = () => {
     setLoading(true);
     setApiError("");
 
-    //  const response = await authService.login({
-    //         email: formData.email,
-    //         password: formData.password
-    //       });
-
     try {
-      const response = await authService.login(formData); // ← Use authService.login
+      const response = await authService.login(formData);
 
-      console.log("API Response:", response); // Debug
-
-      // Access role from response.data
+      // Access role from response.data (assuming backend returns { data: { role: '...' } })
       const userRole = response.data?.role;
-
-      // Store user data
-      if (response.data) {
-        localStorage.setItem("user", JSON.stringify(response.data));
-      }
-
-      // Store token if exists
-      if (response.token) {
-        localStorage.setItem("token", response.token);
-      }
 
       // Navigate based on role
       if (userRole === "admin") {
         navigate("/admin/dashboard");
       } else {
-        navigate("/dashboard"); // Default for normal users
+        navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Login failed:", error);
-
-      if (error.message.includes("401")) {
-        setApiError("Invalid email or password. Please try again.");
-      } else if (error.message.includes("422")) {
-        setApiError("Please check your input and try again.");
-      } else if (error.message.includes("Network")) {
-        setApiError("Network error. Please check your connection.");
-      } else {
-        setApiError("Login failed. Please try again later.");
-      }
+      const msg = parseApiError(error);
+      setApiError(msg);
     } finally {
       setLoading(false);
     }
@@ -195,7 +169,7 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              disabled={loading} // Disable when loading
+              disabled={loading}
             />
             {touched.email && errors.email && (
               <p className="text-red-500 text-sm mt-1">{errors.email}</p>
@@ -212,7 +186,7 @@ const Login = () => {
               value={formData.password}
               onChange={handleChange}
               onBlur={handleBlur}
-              disabled={loading} // Disable when loading
+              disabled={loading}
             />
             {touched.password && errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>

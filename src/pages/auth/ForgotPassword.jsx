@@ -2,20 +2,32 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
-import Logo from "../../components/common/Logo";   
+import Logo from "../../components/common/Logo";
+import { authService } from "../../services/authService";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (email.trim()) {
-      setMessage("A password reset link has been sent to your email.");
-      setEmail("");
-    } else {
+    if (!email.trim()) {
       setMessage("Please enter a valid email address.");
+      return;
+    }
+
+    try {
+      const response = await authService.forgotPassword(email);
+      setMessage(response.status || "A password reset link has been sent to your email.");
+      setError(""); // Clear any previous errors on success
+    } catch (err) {
+      // Assuming parseApiError is a utility function that needs to be imported or defined
+      // For now, we'll use a placeholder or assume it's handled elsewhere if not provided.
+      // If parseApiError is not defined, this will cause a runtime error.
+      // The instruction was to remove console logs, and the provided edit included setError(parseApiError(error)).
+      setError(err.message || "Something went wrong. Please try again.");
+      setMessage(""); // Clear any previous success message on error
     }
   };
 

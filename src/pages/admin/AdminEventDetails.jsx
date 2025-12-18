@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import InterestTag from "../../components/common/InterestTag";
+import { eventService } from "../../services/eventService";
 import {
   Menu,
   X,
@@ -16,42 +17,68 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { normalizeEventData } from '../../utils/eventUtils';
+import { getImageUrl } from '../../services/api';
+
 const AdminEventDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [event, setEvent] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Get event data from navigation state
-  const event = location.state?.event;
+  // Get event data from navigation state if available
+  const locationStateEvent = location.state?.event;
 
-  // Redirect if no event data
   useEffect(() => {
-    if (!event) {
-      navigate("/admin/dashboard");
-    }
-  }, [event, navigate]);
+    const fetchEvent = async () => {
+      if (locationStateEvent) {
+        setEvent(normalizeEventData(locationStateEvent));
+        setLoading(false);
+      }
 
-  if (!event) {
-    return null;
+      if (id && id !== 'undefined') {
+        try {
+          const response = await eventService.getEvent(id);
+          const freshData = response.data || response;
+          setEvent(normalizeEventData(freshData));
+          setLoading(false);
+        } catch (error) {
+          if (!locationStateEvent) {
+            alert("Event not found");
+            navigate("/admin/dashboard");
+          }
+        }
+      }
+    };
+    fetchEvent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, navigate]);
+
+  if (loading && !event) {
+    return <div className="p-10 text-center">Loading event details...</div>;
   }
+
+  if (!event) return null;
 
   const handleBack = () => {
     navigate("/admin/dashboard");
   };
 
   const handleEdit = () => {
-    console.log("Editing event:", event.id);
-    // Navigate to edit event page (create this later)
     navigate(`/admin/edit-event/${event.id}`, { state: { event } });
-    // alert("Edit functionality - Navigate to edit page");
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
-      console.log("Deleting event:", event.id);
-      // In real app, call API to delete event
-      alert("Event deleted successfully!");
-      navigate("/admin/dashboard");
+      try {
+        await eventService.deleteEvent(event.id);
+        alert("Event deleted successfully!");
+        navigate("/admin/dashboard");
+      } catch (error) {
+        alert("Failed to delete event");
+      }
     }
   };
 
@@ -145,9 +172,10 @@ const AdminEventDetails = () => {
             <div className="w-full h-64 sm:h-96 bg-gray-200 rounded-3xl overflow-hidden mb-8">
               {event.image ? (
                 <img
-                  src={event.image}
+                  src={getImageUrl(event.image)}
                   alt={event.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-300">

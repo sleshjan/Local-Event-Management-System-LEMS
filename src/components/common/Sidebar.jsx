@@ -38,13 +38,11 @@ const Sidebar = ({ userInterests = [] }) => {
 
   const handleResetPassword = () => {
     setIsDropdownOpen(false);
-    // console.log('Reset password clicked');
     navigate("/reset-password");
   };
 
   const handleBeOrganizer = () => {
     setIsDropdownOpen(false);
-    // console.log('Be an organizer clicked');
     navigate("/become-organizer");
   };
 
@@ -54,7 +52,7 @@ const Sidebar = ({ userInterests = [] }) => {
     navigate("/login");
   };
 
-  const gotoAdmin = () =>{
+  const gotoAdmin = () => {
     navigate("/admin/dashboard");
   }
   return (
@@ -72,11 +70,10 @@ const Sidebar = ({ userInterests = [] }) => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                isActive(item.path)
-                  ? "bg-purple-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${isActive(item.path)
+                ? "bg-purple-600 text-white"
+                : "text-gray-700 hover:bg-gray-100"
+                }`}
             >
               <Icon className="w-5 h-5" />
               <span>{item.name}</span>
@@ -91,9 +88,10 @@ const Sidebar = ({ userInterests = [] }) => {
               Your interests
             </h3>
             <div className="space-y-2 px-4">
-              {userInterests.map((interest, index) => (
-                <InterestTag key={index} text={interest} />
-              ))}
+              {userInterests.map((interest, index) => {
+                const text = typeof interest === 'object' ? interest.name || interest.title : interest;
+                return <InterestTag key={index} text={text} />;
+              })}
             </div>
           </div>
         )}
@@ -138,7 +136,7 @@ const Sidebar = ({ userInterests = [] }) => {
               <LogOut className="w-5 h-5" />
               <span className="text-sm font-medium">Logout</span>
             </button>
-            
+
             {/* Admin btn testtttttttttttttttttttttttttttttttttttt*/}
             {/* <button
               onClick={gotoAdmin}

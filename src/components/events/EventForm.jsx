@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Input from '../common/Input';
 import Button from '../common/Button';
 import { Upload, X } from 'lucide-react';
+import { eventService } from '../../services/eventService';
 
 const EventForm = ({ initialData = null, mode = 'create' }) => {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     setFormData({
       ...formData,
       [name]: value
@@ -96,7 +97,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     const updatedCategories = formData.categories.includes(category)
       ? formData.categories.filter(c => c !== category)
       : [...formData.categories, category];
-    
+
     setFormData({
       ...formData,
       categories: updatedCategories
@@ -113,6 +114,19 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate File Size (Max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size exceeds 5MB. Please upload a smaller image.");
+        return;
+      }
+
+      // Validate File Type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        alert("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -201,7 +215,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     return error;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate all fields
@@ -237,15 +251,19 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       return;
     }
 
-    console.log('Event data:', formData);
-    
-    if (mode === 'create') {
-      alert('Event created successfully!');
-    } else {
-      alert('Event updated successfully!');
+    // Submit to API
+    try {
+      if (mode === 'create') {
+        await eventService.createEvent(formData);
+        alert('Event created successfully!');
+      } else {
+        await eventService.updateEvent(initialData.id, formData);
+        alert('Event updated successfully!');
+      }
+      navigate('/admin/dashboard');
+    } catch (error) {
+      alert(error.message || "Something went wrong.");
     }
-    
-    navigate('/admin/dashboard');
   };
 
   const handleCancel = () => {
@@ -259,7 +277,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         <label className="block text-gray-700 text-sm font-medium mb-2">
           Event Image
         </label>
-        
+
         {!imagePreview ? (
           <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-purple-400 transition-colors">
             <label className="cursor-pointer">
@@ -390,7 +408,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       {/* Location Section */}
       <div className="border-t border-gray-200 pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Location</h3>
-        
+
         {/* Venue Name */}
         <div className="mb-4">
           <Input
@@ -483,11 +501,10 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
               key={category}
               type="button"
               onClick={() => handleCategoryToggle(category)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                formData.categories.includes(category)
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${formData.categories.includes(category)
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               {category}
             </button>
@@ -546,7 +563,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       {/* Organizer Details */}
       <div className="border-t border-gray-200 pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizer Details</h3>
-        
+
         <div className="space-y-4">
           <div>
             <Input
@@ -589,10 +606,10 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
           Cancel
         </button>
         <div className="w-full sm:w-1/2">
-          <Button 
-            text={mode === 'create' ? 'Create Event' : 'Update Event'} 
-            type="submit" 
-            fullWidth 
+          <Button
+            text={mode === 'create' ? 'Create Event' : 'Update Event'}
+            type="submit"
+            fullWidth
           />
         </div>
       </div>

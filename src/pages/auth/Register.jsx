@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { authService } from "../../services/authService"; // ← Add this import
+import { Upload, Loader2 } from "lucide-react";
+import { authService } from "../../services/authService";
+import { locationService } from "../../services/locationService";
 import Logo from "../../components/common/Logo";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Checkbox from "../../components/common/Checkbox";
-import locationData from "../../data/locationData.json";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -14,28 +15,56 @@ const Register = () => {
     email: "",
     password: "",
     confirmPassword: "",
-    province: "",
-    district: "",
-    municipality: "",
+    province: "", // Storing ID
+    district: "", // Storing ID
+    municipality: "", // Storing ID
     ward: "",
     street: "",
+    profilePicture: null,
     agreedToTerms: false,
   });
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-  const [apiError, setApiError] = useState(""); // ← Add API error state
-  const [loading, setLoading] = useState(false); // ← Add loading state
+  const [apiError, setApiError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fetchingLocations, setFetchingLocations] = useState(true);
 
+  // Full location data from API
+  const [locationData, setLocationData] = useState([]);
+
+  // Derived state for dropdowns
   const [districts, setDistricts] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
-  const [wards, setWards] = useState([]);
+  const [wards, setWards] = useState([]); // Array of numbers
 
-  // ... (keep all your existing useEffect hooks)
+  // Load addresses on mount
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        setFetchingLocations(true);
+        const data = await locationService.getAddresses();
+        setLocationData(data);
+      } catch (err) {
+        setApiError("Failed to load location data. Please refresh.");
+      } finally {
+        setFetchingLocations(false);
+      }
+    };
+    fetchAddresses();
+  }, []);
+
+  // Handle Province Change
   useEffect(() => {
     if (formData.province) {
-      const selectedProvince = locationData[formData.province];
-      setDistricts(Object.keys(selectedProvince));
+      // formData.province is an ID (string or number from value)
+      const selectedProvince = locationData.find(p => p.id == formData.province);
+      if (selectedProvince && selectedProvince.districts) {
+        setDistricts(selectedProvince.districts);
+      } else {
+        setDistricts([]);
+      }
+      // Reset subsequent fields
       setFormData((prev) => ({
         ...prev,
         district: "",
@@ -45,30 +74,41 @@ const Register = () => {
       setMunicipalities([]);
       setWards([]);
     }
-  }, [formData.province]);
+  }, [formData.province, locationData]);
 
+  // Handle District Change
   useEffect(() => {
-    if (formData.province && formData.district) {
-      const selectedDistrict =
-        locationData[formData.province][formData.district];
-      setMunicipalities(Object.keys(selectedDistrict));
+    if (formData.district) {
+      // formData.district is an ID
+      const selectedDistrict = districts.find(d => d.id == formData.district);
+      if (selectedDistrict && selectedDistrict.municipalities) {
+        setMunicipalities(selectedDistrict.municipalities);
+      } else {
+        setMunicipalities([]);
+      }
       setFormData((prev) => ({ ...prev, municipality: "", ward: "" }));
       setWards([]);
     }
-  }, [formData.district]);
+  }, [formData.district, districts]);
 
+  // Handle Municipality Change
   useEffect(() => {
-    if (formData.province && formData.district && formData.municipality) {
-      const selectedMunicipality =
-        locationData[formData.province][formData.district][
-          formData.municipality
-        ];
-      setWards(selectedMunicipality);
+    if (formData.municipality) {
+      // formData.municipality is an ID
+      const selectedMunicipality = municipalities.find(m => m.id == formData.municipality);
+
+      if (selectedMunicipality && selectedMunicipality.no_of_ward) {
+        // Generate ward numbers array [1, 2, ..., N]
+        const wardCount = parseInt(selectedMunicipality.no_of_ward, 10);
+        const wardArray = Array.from({ length: wardCount }, (_, i) => i + 1);
+        setWards(wardArray);
+      } else {
+        setWards([]);
+      }
       setFormData((prev) => ({ ...prev, ward: "" }));
     }
-  }, [formData.municipality]);
+  }, [formData.municipality, municipalities]);
 
-  // ... (keep all your validation functions)
   const validateEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
@@ -87,11 +127,33 @@ const Register = () => {
       [name]: newValue,
     });
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: "",
+      });
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate File Size (Max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("File size exceeds 5MB. Please upload a smaller image.");
+        return;
+      }
+
+      // Validate File Type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        alert("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.");
+        return;
+      }
+
+      setFormData({
+        ...formData,
+        profilePicture: file,
       });
     }
   };
@@ -167,12 +229,10 @@ const Register = () => {
     return error;
   };
 
-  // ← UPDATED handleSubmit with API integration
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setApiError(""); // Clear previous API errors
+    setApiError("");
 
-    // Validate all fields
     const fieldNames = [
       "username",
       "email",
@@ -195,14 +255,12 @@ const Register = () => {
       }
     });
 
-    // Check terms agreement
     if (!formData.agreedToTerms) {
       newErrors.agreedToTerms =
         "You must agree to the Terms and Privacy Policy";
       hasErrors = true;
     }
 
-    // Mark all fields as touched
     const allTouched = {};
     fieldNames.forEach((field) => {
       allTouched[field] = true;
@@ -214,33 +272,8 @@ const Register = () => {
       return;
     }
 
-    // API Call
-    setLoading(true);
-    
-    try {
-      const response = await authService.register(formData);
-      
-      console.log("Registration Response:", response); // Debug
-      
-      // Registration successful - navigate to interest selection
-      navigate("/select-interests");
-      
-    } catch (error) {
-      console.error("Registration failed:", error);
-      
-      // Handle different error types
-      if (error.message.includes('422')) {
-        setApiError('This email or username is already taken. Please use different credentials.');
-      } else if (error.message.includes('400')) {
-        setApiError('Invalid registration data. Please check your inputs.');
-      } else if (error.message.includes('Network')) {
-        setApiError('Network error. Please check your connection.');
-      } else {
-        setApiError('Registration failed. Please try again later.');
-      }
-    } finally {
-      setLoading(false);
-    }
+    // Navigate to select interests page with form data
+    navigate("/select-interests", { state: { registrationData: formData } });
   };
 
   return (
@@ -265,7 +298,7 @@ const Register = () => {
           <p className="text-gray-600">Register to discover events.</p>
         </div>
 
-        {/* ← Add API Error Display */}
+        {/* API Error Display */}
         {apiError && (
           <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
             <p className="text-red-600 text-sm">{apiError}</p>
@@ -274,7 +307,6 @@ const Register = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-2">
-          {/* ... (keep all your existing form fields) */}
           {/* Account Details Section */}
           <div className="rounded-2xl p-3 md:p-3 space-y-5">
             <h2 className="text-xl font-semibold text-gray-900 my-2">
@@ -347,9 +379,37 @@ const Register = () => {
               </div>
             </div>
 
+            {/* Profile Picture */}
+            <div>
+              <label className="block text-gray-700 text-sm font-medium mb-2">
+                Profile Picture
+              </label>
+              <div className="flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-purple-300 border-dashed rounded-xl cursor-pointer bg-purple-50 hover:bg-purple-100 transition-all group">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Upload className="w-8 h-8 mb-3 text-purple-400 group-hover:text-purple-600 transition-colors" />
+                    <p className="mb-2 text-sm text-gray-500 group-hover:text-gray-700">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formData.profilePicture ? formData.profilePicture.name : "SVG, PNG, JPG or GIF (MAX. 800x400px)"}
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    name="profilePicture"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
             {/* Address Section Title */}
-            <h3 className="text-lg font-semibold text-gray-900 pt-2">
+            <h3 className="text-lg font-semibold text-gray-900 pt-2 flex items-center gap-2">
               Address
+              {fetchingLocations && <Loader2 className="w-4 h-4 animate-spin text-purple-600" />}
             </h3>
 
             {/* Province & District */}
@@ -363,12 +423,13 @@ const Register = () => {
                   value={formData.province}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
+                  disabled={fetchingLocations}
+                  className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all disabled:opacity-50"
                 >
                   <option value="">Select province</option>
-                  {Object.keys(locationData).map((province) => (
-                    <option key={province} value={province}>
-                      {province}
+                  {locationData.map((province) => (
+                    <option key={province.id} value={province.id}>
+                      {province.name}
                     </option>
                   ))}
                 </select>
@@ -391,8 +452,8 @@ const Register = () => {
                 >
                   <option value="">Select district</option>
                   {districts.map((district) => (
-                    <option key={district} value={district}>
-                      {district}
+                    <option key={district.id} value={district.id}>
+                      {district.name}
                     </option>
                   ))}
                 </select>
@@ -418,8 +479,8 @@ const Register = () => {
                 >
                   <option value="">Select municipality</option>
                   {municipalities.map((municipality) => (
-                    <option key={municipality} value={municipality}>
-                      {municipality}
+                    <option key={municipality.id} value={municipality.id}>
+                      {municipality.name}
                     </option>
                   ))}
                 </select>
@@ -487,11 +548,11 @@ const Register = () => {
             )}
           </div>
 
-          {/* ← Updated Create Account Button with loading state */}
-          <Button 
-            text={loading ? "Creating account..." : "Create account"} 
-            type="submit" 
-            fullWidth 
+          {/* Create Account Button */}
+          <Button
+            text={loading ? "Creating account..." : "Create account"}
+            type="submit"
+            fullWidth
             disabled={loading}
           />
 

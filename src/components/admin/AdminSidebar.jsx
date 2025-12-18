@@ -10,23 +10,23 @@ const AdminSidebar = () => {
   const dropdownRef = useRef(null);
 
   const menuItems = [
-    { 
-      name: 'Events', 
+    {
+      name: 'Events',
       path: '/admin/dashboard',
       icon: LayoutDashboard
     },
-    { 
-      name: 'Manage Users', 
+    {
+      name: 'Manage Users',
       path: '/admin/users',
       icon: Users
     },
-    { 
-      name: 'Manage Categories', 
+    {
+      name: 'Manage Categories',
       path: '/admin/categories',
       icon: FolderKanban
     },
-    { 
-      name: 'Organizer requests', 
+    {
+      name: 'Organizer requests',
       path: '/admin/organizer-requests',
       icon: Inbox
     }
@@ -72,11 +72,10 @@ const AdminSidebar = () => {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-                isActive(item.path)
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${isActive(item.path)
                   ? 'bg-purple-600 text-white'
                   : 'text-gray-700 hover:bg-gray-100'
-              }`}
+                }`}
             >
               <Icon className="w-5 h-5" />
               <span>{item.name}</span>
@@ -99,6 +98,17 @@ const AdminSidebar = () => {
         {isDropdownOpen && (
           <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             {/* Reset Password */}
+            <button
+              onClick={() => {
+                setIsDropdownOpen(false);
+                navigate('/admin/profile');
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-sm font-medium">Profile</span>
+            </button>
+
             <button
               onClick={handleResetPassword}
               className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left"

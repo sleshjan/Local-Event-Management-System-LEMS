@@ -1,17 +1,100 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import SearchInput from "../../components/common/SearchInput";
-import AdminEventCard from "../../components/events/AdminEventCard";
+import EventCard from "../../components/events/EventCard";
 import Button from "../../components/common/Button";
 import { Menu, X, Plus } from "lucide-react";
-import { mockEvents } from "../../data/eventsData";
+import { eventService } from "../../services/eventService";
+import UserProfileIcon from "../../components/common/UserProfileIcon";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [events] = useState(mockEvents);
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await eventService.getAllEvents();
+
+        let eventsData = [];
+
+        // Priority 1: User specified path "data.other.data"
+        if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
+          eventsData = response.data.other.data;
+        }
+
+        // Priority 2: Standard paths
+        if (eventsData.length === 0) {
+          const possibleArrays = [
+            response,
+            response?.data,
+            response?.data?.data,
+            response?.data?.events,
+            response?.events,
+            response?.results
+          ];
+
+          for (const data of possibleArrays) {
+            if (Array.isArray(data)) {
+              eventsData = data;
+              break;
+            }
+          }
+        }
+
+        // Priority 3: Deep recursive search
+        if (eventsData.length === 0) {
+          const findEventsInObject = (obj, depth = 0) => {
+            if (!obj || depth > 5) return null;
+            if (Array.isArray(obj)) {
+              if (obj.length === 0) return obj;
+              const first = obj[0];
+              if (first && typeof first === 'object' && (first.id !== undefined || first.title || first.name)) {
+                return obj;
+              }
+              return null;
+            }
+            if (typeof obj === 'object') {
+              for (const key in obj) {
+                if (Object.prototype.hasOwnProperty.call(obj, key)) {
+                  const found = findEventsInObject(obj[key], depth + 1);
+                  if (found) return found;
+                }
+              }
+            }
+            return null;
+          };
+          const found = findEventsInObject(response);
+          if (found) eventsData = found;
+        }
+
+        // Map backend data to EventCard props
+        const formattedEvents = eventsData.map(ev => ({
+          ...ev,
+          id: ev.id,
+          title: ev.name || ev.title || "Untitled Event",
+          date: ev.date || "Date TBA",
+          location: ev.location || ev.venue || "Location TBA",
+          image: ev.image || ev.image_url || ev.cover_image,
+          categories: Array.isArray(ev.categories)
+            ? ev.categories.map(c => (typeof c === 'object' ? c.name : c))
+            : (typeof ev.category === 'string' ? [ev.category] : []),
+          attendees: ev.attendees_count || ev.attendees || 0
+        }));
+        const validEvents = (formattedEvents || []).filter(e => e && (e.id || e.title));
+        setEvents(validEvents);
+      } catch (error) {
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEvents();
+  }, []);
 
   // Filter events based on search
   const filteredEvents = events.filter(
@@ -23,11 +106,15 @@ const AdminDashboard = () => {
       )
   );
 
-  const handleCreateEvent = () => {
-    // Navigate to create event page (you can create this later)
-    console.log("Create new event");
-    // navigate("/admin/create-event");
+  const handleDeleteEvent = async (id) => {
+    try {
+      await eventService.deleteEvent(id);
+      setEvents(currentEvents => currentEvents.filter(event => event.id !== id));
+    } catch (error) {
+      alert("Failed to delete event. Please try again.");
+    }
   };
+
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -81,15 +168,18 @@ const AdminDashboard = () => {
               />
             </div>
 
-            {/* Create Event Button - Desktop */}
-            <div className="hidden sm:block">
-              <button
-                onClick={() => navigate("/admin/create-event")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
-              >
-                <Plus className="w-5 h-5" />
-                Create
-              </button>
+            {/* Right Side Actions */}
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:block">
+                <button
+                  onClick={() => navigate("/admin/create-event")}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white font-semibold rounded-xl hover:bg-purple-700 transition-colors"
+                >
+                  <Plus className="w-5 h-5" />
+                  Create
+                </button>
+              </div>
+              <UserProfileIcon />
             </div>
           </div>
 
@@ -149,8 +239,13 @@ const AdminDashboard = () => {
             {/* Events Grid - 3 columns on desktop */}
             {filteredEvents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event) => (
-                  <AdminEventCard key={event.id} event={event} />
+                {filteredEvents.map((event, index) => (
+                  <EventCard
+                    key={event.id || `admin-event-${index}`}
+                    event={event}
+                    role="admin"
+                    onDelete={handleDeleteEvent}
+                  />
                 ))}
               </div>
             ) : (

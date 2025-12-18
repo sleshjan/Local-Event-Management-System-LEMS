@@ -1,50 +1,123 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import { eventService } from '../../services/eventService';
 import Sidebar from '../../components/common/Sidebar';
 import Button from '../../components/common/Button';
 import InterestTag from '../../components/common/InterestTag';
 import { Menu, X, Calendar, MapPin, Users, Clock, DollarSign, User as UserIcon, ArrowLeft } from 'lucide-react';
 
 
+import { userService } from '../../services/userService';
+import { normalizeEventData } from '../../utils/eventUtils';
+import { getImageUrl } from '../../services/api';
+
 const EventDetails = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [eventData, setEventData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
 
-  // Get event data from navigation state
-  const event = location.state?.event;
+  // Get event data from navigation state if available (for instant load)
+  const locationStateEvent = location.state?.event;
 
-  // Get user interests from localStorage
+  // Get user interests from backend (same as Dashboard)
   const [userInterests, setUserInterests] = useState([]);
 
   useEffect(() => {
-    const storedInterests = localStorage.getItem('userInterests');
-    if (storedInterests) {
-      setUserInterests(JSON.parse(storedInterests));
-    }
+    const loadProfile = async () => {
+      try {
+        const profile = await userService.getProfile();
+        // Handle potentially different response structures
+        const interests = profile.interests || profile.data?.interests || [];
+        setUserInterests(interests);
+      } catch (err) {
+        // Sidebar profile error
+      }
+    };
+    loadProfile();
   }, []);
 
   useEffect(() => {
-    if (event) {
-      setEventData(event);
-    }
-  }, [event]);
+    const loadEvent = async () => {
+      // If we have initial data passed from navigation, use it first
+      if (locationStateEvent) {
+        setEventData(normalizeEventData(locationStateEvent));
+        setLoading(false);
+      }
 
-  // Redirect if no event data
-  useEffect(() => {
-    if (!event) {
-      navigate('/dashboard');
-    }
-  }, [event, navigate]);
+      // If we have an ID, fetch the latest data
+      const eventId = id || locationStateEvent?.id;
+
+      if (eventId && eventId !== 'undefined') {
+        try {
+          const response = await eventService.getEvent(eventId);
+          const freshData = response.data || response;
+          // Normalize the fresh data to match dashboard format
+          setEventData(normalizeEventData(freshData));
+          setLoading(false);
+        } catch (error) {
+          // Event error
+          if (!locationStateEvent) {
+            // Optional: Handle 404/422 explicitly
+            // navigate('/dashboard');
+          }
+        }
+      } else if (!locationStateEvent) {
+        // No ID found at all
+        navigate('/dashboard');
+      }
+    };
+
+    loadEvent();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, navigate]);
+
+  if (loading && !eventData) {
+    return <div className="p-10 text-center">Loading event details...</div>;
+  }
 
   if (!eventData) {
     return null;
   }
 
-  const handleJoinEvent = () => {
-    console.log('Joining event:', eventData.id);
-    alert(`You've joined: ${eventData.title}!`);
+  const handleJoinEvent = async () => {
+    if (joining) return;
+
+    // Check if user is logged in
+    const currentUser = userService.getProfile ? (await userService.getProfile()) : JSON.parse(localStorage.getItem('user'));
+
+    if (!currentUser) {
+      alert("Please login to join events.");
+      navigate('/login');
+      return;
+    }
+
+    // Check Email Verification
+    // Need to ensure we have the latest user data, so we fetched it above or rely on what we have.
+    // The previous line fetches profile which returns data.data or data.
+    const userData = currentUser.data || currentUser;
+
+    if (!userData.email_verified_at) {
+      alert("Your email must be verified to join events. Please go to your profile settings to verify your email.");
+      return;
+    }
+
+    setJoining(true);
+    try {
+      await eventService.registerForEvent(eventData.id);
+      alert(`Successfully joined: ${eventData.title}!`);
+      // Optimistically update UI or fully reload data
+      // For now, let's reload to be safe
+      const response = await eventService.getEvent(eventData.id);
+      setEventData(normalizeEventData(response.data || response));
+    } catch (error) {
+      alert(error.message || "Failed to join event");
+    } finally {
+      setJoining(false);
+    }
   };
 
   return (
@@ -106,9 +179,10 @@ const EventDetails = () => {
             <div className="w-full h-64 sm:h-96 bg-gray-200 rounded-3xl overflow-hidden mb-8">
               {eventData.image ? (
                 <img
-                  src={eventData.image}
+                  src={getImageUrl(eventData.image)}
                   alt={eventData.title}
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-300">
@@ -229,9 +303,10 @@ const EventDetails = () => {
                   <div className="border-t border-gray-200"></div>
 
                   <Button
-                    text="Join Event"
+                    text={joining ? "Joining..." : "Join Event"}
                     onClick={handleJoinEvent}
                     fullWidth
+                    disabled={joining}
                   />
 
                   <button

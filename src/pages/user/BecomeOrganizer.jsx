@@ -1,19 +1,19 @@
-import { useState , useEffect} from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
+import { organizerService } from "../../services/organizerService";
+import { userService } from "../../services/userService";
 
 const BecomeOrganizer = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
-    organizationName: "",
-    organizationType: "",
-    location: "",
-    phone: "",
-    bio: "",
+    phone_no: "",
+    reason: "",
+    additional_information: "",
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -26,6 +26,20 @@ const BecomeOrganizer = () => {
     if (storedInterests) {
       setUserInterests(JSON.parse(storedInterests));
     }
+
+    // specific effect to load phone number
+    const loadUserPhone = async () => {
+      try {
+        const user = await userService.getProfile();
+        const userData = user.data || user;
+        if (userData.phone_number) {
+          setFormData(prev => ({ ...prev, phone_no: userData.phone_number }));
+        }
+      } catch (err) {
+        // Error load
+      }
+    };
+    loadUserPhone();
   }, []);
 
   const validatePhone = (phone) => {
@@ -62,26 +76,20 @@ const BecomeOrganizer = () => {
     let error = "";
 
     switch (name) {
-      case "organizationName":
-        if (!value.trim()) error = "Organization name is required";
-        break;
-      case "organizationType":
-        if (!value) error = "Organization type is required";
-        break;
-      case "location":
-        if (!value.trim()) error = "Location is required";
-        break;
-      case "phone":
+      case "phone_no":
         if (!value) {
           error = "Phone number is required";
         } else if (!validatePhone(value)) {
           error = "Please enter a valid phone number";
         }
         break;
-      case "bio":
-        if (!value.trim()) error = "Bio is required";
+      case "reason":
+        if (!value.trim()) error = "Reason is required";
         else if (value.trim().length < 10)
-          error = "Bio must be at least 10 characters";
+          error = "Reason must be at least 10 characters";
+        break;
+      case "additional_information":
+        // Optional field, simplistic validation if needed
         break;
       default:
         break;
@@ -95,16 +103,26 @@ const BecomeOrganizer = () => {
     return error;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const fieldNames = [
-      "organizationName",
-      "organizationType",
-      "location",
-      "phone",
-      "bio",
-    ];
+    // Check Verification Status
+    try {
+      const currentUser = await userService.getProfile();
+      const userData = currentUser.data || currentUser;
+
+      if (!userData.email_verified_at || !userData.phone_verified_at) {
+        alert("Both Email and Phone must be verified to become an organizer. Please verify them in your Profile settings.");
+        navigate('/profile');
+        return;
+      }
+    } catch (err) {
+      // Error check
+      alert("Failed to verify account status. Please try again.");
+      return;
+    }
+
+    const fieldNames = ["phone_no", "reason", "additional_information"];
     const newErrors = {};
     let hasErrors = false;
 
@@ -127,9 +145,13 @@ const BecomeOrganizer = () => {
       return;
     }
 
-    console.log("Organizer request submitted:", formData);
-    alert("Your request to become an organizer has been submitted!");
-    navigate("/dashboard");
+    try {
+      await organizerService.createRequest(formData);
+      alert("Your request to become an organizer has been submitted!");
+      navigate("/dashboard");
+    } catch (error) {
+      alert(error.message || "Failed to submit request");
+    }
   };
 
   return (
@@ -192,102 +214,59 @@ const BecomeOrganizer = () => {
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Organization Name and Type */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Input
-                      label="Organization Name"
-                      type="text"
-                      name="organizationName"
-                      placeholder="ABC Events"
-                      value={formData.organizationName}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.organizationName && errors.organizationName && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.organizationName}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-gray-700 text-sm font-medium mb-2">
-                      Organization Type
-                    </label>
-                    <select
-                      name="organizationType"
-                      value={formData.organizationType}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all"
-                    >
-                      <option value="">Choose an option</option>
-                      <option value="Company">Company</option>
-                      <option value="Community">Community</option>
-                      <option value="Individual">Individual</option>
-                    </select>
-                    {touched.organizationType && errors.organizationType && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.organizationType}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Location and Phone */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Input
-                      label="Primary Location"
-                      type="text"
-                      name="location"
-                      placeholder="City, Country"
-                      value={formData.location}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.location && errors.location && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.location}
-                      </p>
-                    )}
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Contact Phone"
-                      type="tel"
-                      name="phone"
-                      placeholder="+1 555 123 4567"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.phone && errors.phone && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {errors.phone}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bio */}
+                {/* Phone Number */}
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2">
-                    Organizer Bio
-                  </label>
-                  <textarea
-                    name="bio"
-                    value={formData.bio}
+                  <Input
+                    label="Phone Number"
+                    type="tel"
+                    name="phone_no"
+                    placeholder="9800000000"
+                    value={formData.phone_no}
                     onChange={handleChange}
                     onBlur={handleBlur}
-                    placeholder="Short description of your events and mission"
+                  />
+                  {touched.phone_no && errors.phone_no && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.phone_no}
+                    </p>
+                  )}
+                </div>
+
+                {/* Reason for becoming an organizer */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">
+                    Reason for becoming an organizer
+                  </label>
+                  <textarea
+                    name="reason"
+                    value={formData.reason}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Enter the reason for becoming an organizer"
                     rows="4"
                     className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
                   />
-                  {touched.bio && errors.bio && (
-                    <p className="text-red-500 text-sm mt-1">{errors.bio}</p>
+                  {touched.reason && errors.reason && (
+                    <p className="text-red-500 text-sm mt-1">{errors.reason}</p>
+                  )}
+                </div>
+
+                {/* Additional Information */}
+                <div>
+                  <label className="block text-gray-700 text-sm font-medium mb-2">
+                    Additional Information
+                  </label>
+                  <textarea
+                    name="additional_information"
+                    value={formData.additional_information}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="Any extra details you'd like to share"
+                    rows="3"
+                    className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
+                  />
+                  {touched.additional_information && errors.additional_information && (
+                    <p className="text-red-500 text-sm mt-1">{errors.additional_information}</p>
                   )}
                 </div>
 

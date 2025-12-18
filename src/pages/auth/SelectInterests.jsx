@@ -1,88 +1,131 @@
-import { useState , useEffect} from "react";
-import { useNavigate } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { Sparkles, Loader2 } from "lucide-react";
+import { parseApiError } from "../../services/api";
+import { authService } from "../../services/authService";
+import { categoryService } from "../../services/categoryService";
+import { userService } from "../../services/userService";
 import Logo from "../../components/common/Logo";
-// import Button from "../../components/common/Button";
 import InterestCheckbox from "../../components/common/InterestCheckbox";
 import SearchInput from "../../components/common/SearchInput";
-import { categoryIcons, interestIcons } from "../../data/categoryIcons";
+import { interestIcons } from "../../data/categoryIcons";
 
 const SelectInterests = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  // Storing IDs of selected interests
   const [selectedInterests, setSelectedInterests] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // Load previously selected interests when page loads
+  // Check mode: 'register' (default) or 'edit'
+  const mode = location.state?.mode || "register";
+  const registrationData = location.state?.registrationData;
+
   useEffect(() => {
-    const storedInterests = localStorage.getItem("userInterests");
-    if (storedInterests) {
-      setSelectedInterests(JSON.parse(storedInterests));
+    // Only redirect if in register mode and no data
+    if (mode === "register" && !registrationData) {
+      navigate("/register");
     }
+  }, [registrationData, navigate, mode]);
+
+  // Load categories from backend
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await categoryService.getCategories();
+
+        let fetchedData = [];
+        if (Array.isArray(response)) {
+          fetchedData = response;
+        } else if (response && Array.isArray(response.data)) {
+          fetchedData = response.data;
+        } else if (response && response.data && Array.isArray(response.data.data)) {
+          fetchedData = response.data.data;
+        }
+
+        if (fetchedData.length > 0) {
+          setCategories(fetchedData);
+        }
+      } catch (err) {
+        setError("Failed to load interests. Please check your connection.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
   }, []);
 
-  // Interest categories
-  const categories = [
-    {
-      title: "Music & Nightlife",
-      interests: ["Live Music", "DJ & Clubs", "Classical", "Open Mic"],
-    },
-    {
-      title: "Tech & Learning",
-      interests: ["Tech Meetups", "AI & Data", "Design Talks", "Workshops"],
-    },
-    {
-      title: "Food & Drink",
-      interests: [
-        "Food & Drink",
-        "Wine & Tastings",
-        "Coffee & Brunch",
-        "Vegan & Healthy",
-      ],
-    },
-    {
-      title: "Outdoors & Wellness",
-      interests: [
-        "Hiking & Outdoors",
-        "Fitness & Yoga",
-        "Cycling",
-        "Mindfulness",
-      ],
-    },
-    {
-      title: "Arts & Culture",
-      interests: ["Art & Design", "Theatre", "Photography", "Museums"],
-    },
-    {
-      title: "Social & Community",
-      interests: [
-        "Networking",
-        "Volunteering",
-        "Language Exchange",
-        "Board Games",
-      ],
-    },
-  ];
+  // Load existing interests if in Edit Mode
+  useEffect(() => {
+    const fetchUserInterests = async () => {
+      if (mode === "edit") {
+        try {
+          const profile = await userService.getProfile();
+          // Assuming profile.interests is an array of objects or IDs
+          // accessing interests might depend on backend structure (e.g. profile.data.interests)
+          const interests = profile.interests || profile.data?.interests || [];
 
-  const handleInterestToggle = (interest) => {
-    if (selectedInterests.includes(interest)) {
-      setSelectedInterests(selectedInterests.filter((i) => i !== interest));
+          // Map to IDs if they are objects
+          const interestIds = interests.map(i => (typeof i === 'object' ? i.id : i));
+          setSelectedInterests(interestIds);
+        } catch (err) {
+          setError("Failed to load your current interests.");
+        }
+      }
+    };
+    fetchUserInterests();
+  }, [mode]);
+
+  const handleInterestToggle = (id) => {
+    if (selectedInterests.includes(id)) {
+      setSelectedInterests(selectedInterests.filter((i) => i !== id));
     } else {
-      setSelectedInterests([...selectedInterests, interest]);
+      setSelectedInterests([...selectedInterests, id]);
     }
-    // Clear error when user selects
     if (error) setError("");
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedInterests.length < 3) {
       setError("Please select at least 3 interests to continue");
       return;
     }
-    console.log("Selected interests:", selectedInterests);
-    // Store interests in localStorage (temporary - in real app use context/redux)
-    localStorage.setItem("userInterests", JSON.stringify(selectedInterests));
-    navigate("/dashboard");
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      if (mode === "edit") {
+        // Update existing user interests
+        await userService.updateInterests(selectedInterests);
+        setSuccessMessage("Interests updated successfully!");
+
+        // Wait for user to see message before navigating
+        setTimeout(() => {
+          navigate("/dashboard");
+        }, 1500);
+
+      } else {
+        // Register new user
+        const finalData = {
+          ...registrationData,
+          interests: selectedInterests
+        };
+        await authService.register(finalData);
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      const msg = parseApiError(err);
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -90,14 +133,18 @@ const SelectInterests = () => {
   };
 
   // Filter categories based on search
-  const filteredCategories = categories
-    .map((category) => ({
-      ...category,
-      interests: category.interests.filter((interest) =>
-        interest.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    }))
-    .filter((category) => category.interests.length > 0);
+  const filteredCategories = categories.filter((category) =>
+    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Helper to get icon
+  const getIconForCategory = (name) => {
+    // Try exact match
+    if (interestIcons[name]) return interestIcons[name];
+    // Try partial match or defaults could be added here
+    // For now returning undefined (InterestCheckbox handles no icon)
+    return undefined;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
@@ -165,6 +212,13 @@ const SelectInterests = () => {
               </div>
             )}
 
+            {/* Success Message */}
+            {successMessage && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+                <p className="text-green-700 text-sm font-medium">{successMessage}</p>
+              </div>
+            )}
+
             {/* Selected Count */}
             {selectedInterests.length > 0 && (
               <div className="mb-6 p-3 sm:p-4 bg-purple-50 border border-purple-200 rounded-xl">
@@ -176,56 +230,42 @@ const SelectInterests = () => {
               </div>
             )}
 
-            {/* Interest Categories Grid - 3 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-              {filteredCategories.map((category, index) => {
-                const CategoryIcon = categoryIcons[category.title];
-                return (
-                  <div
-                    key={index}
-                    className="bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md transition-shadow"
-                  >
-                    {/* Category Header with Icon */}
-                    <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
-                      {CategoryIcon && (
-                        <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
-                          <CategoryIcon className="w-5 h-5 text-purple-600" />
-                        </div>
-                      )}
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                        {category.title}
-                      </h3>
-                    </div>
-
-                    {/* Interest Checkboxes */}
-                    <div className="space-y-2">
-                      {category.interests.map((interest, idx) => {
-                        const InterestIcon = interestIcons[interest];
-                        return (
-                          <InterestCheckbox
-                            key={idx}
-                            label={interest}
-                            name={interest}
-                            icon={InterestIcon}
-                            checked={selectedInterests.includes(interest)}
-                            onChange={() => handleInterestToggle(interest)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* No Results */}
-            {filteredCategories.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">
-                  No interests found matching "{searchQuery}"
-                </p>
+            {/* Content Body */}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-gray-500">
+                <Loader2 className="w-10 h-10 animate-spin mb-4 text-purple-600" />
+                <p>Loading interests...</p>
               </div>
+            ) : (
+              <>
+                {/* Interest Grid - Flattened */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+                  {filteredCategories.map((category) => {
+                    const Icon = getIconForCategory(category);
+                    return (
+                      <InterestCheckbox
+                        key={category.id}
+                        label={category.name}
+                        name={`interest-${category.id}`}
+                        icon={Icon}
+                        checked={selectedInterests.includes(category.id)}
+                        onChange={() => handleInterestToggle(category.id)}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* No Results */}
+                {!loading && filteredCategories.length === 0 && (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">
+                      No interests found matching "{searchQuery}"
+                    </p>
+                  </div>
+                )}
+              </>
             )}
+
 
             {/* Footer Note */}
             <p className="text-xs sm:text-sm text-gray-500 text-center mb-6">
@@ -235,16 +275,19 @@ const SelectInterests = () => {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 sm:justify-center items-center">
               <button
-                onClick={handleBack}
-                className="w-full sm:w-auto min-w-40 px-8 py-4 text-gray-700 text-lg bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-200 hover:border-gray-300 transition-all shadow-sm hover:shadow order-2 sm:order-1"
+                onClick={mode === "edit" ? () => navigate("/dashboard") : handleBack}
+                disabled={submitting}
+                className="w-full sm:w-auto min-w-40 px-8 py-4 text-gray-700 text-lg bg-white border-2 border-gray-200 rounded-xl hover:bg-gray-200 hover:border-gray-300 transition-all shadow-sm hover:shadow order-2 sm:order-1 disabled:opacity-50"
               >
-                Back
+                {mode === "edit" ? "Cancel" : "Back"}
               </button>
               <button
                 onClick={handleContinue}
-                className="w-full sm:w-auto min-w-40 px-8 py-4 bg-purple-600 text-lg text-white rounded-xl hover:bg-purple-700 transition-all shadow-md hover:shadow-lg order-1 sm:order-2"
+                disabled={submitting || loading}
+                className="w-full sm:w-auto min-w-40 px-8 py-4 bg-purple-600 text-lg text-white rounded-xl hover:bg-purple-700 transition-all shadow-md hover:shadow-lg order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Continue
+                {submitting && <Loader2 className="w-5 h-5 animate-spin" />}
+                {submitting ? (mode === "edit" ? "Saving..." : "Creating Account...") : (mode === "edit" ? "Save Changes" : "Create Account")}
               </button>
             </div>
           </div>

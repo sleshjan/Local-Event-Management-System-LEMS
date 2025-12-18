@@ -4,11 +4,13 @@ import Sidebar from "../../components/common/Sidebar";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
+import { authService } from "../../services/authService";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
+    oldPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
@@ -59,6 +61,9 @@ const ResetPassword = () => {
     let error = "";
 
     switch (name) {
+      case "oldPassword":
+        if (!value) error = "Current password is required";
+        break;
       case "newPassword":
         if (!value) {
           error = "New password is required";
@@ -85,10 +90,11 @@ const ResetPassword = () => {
     return error;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validate all fields
+    const oldPasswordError = validateField("oldPassword", formData.oldPassword);
     const newPasswordError = validateField("newPassword", formData.newPassword);
     const confirmPasswordError = validateField(
       "confirmPassword",
@@ -97,19 +103,34 @@ const ResetPassword = () => {
 
     // Mark all fields as touched
     setTouched({
+      oldPassword: true,
       newPassword: true,
       confirmPassword: true,
     });
 
     // If there are errors, don't submit
-    if (newPasswordError || confirmPasswordError) {
+    if (oldPasswordError || newPasswordError || confirmPasswordError) {
       return;
     }
 
-    // Success - reset password
-    console.log("Password reset:", formData);
-    alert("Password reset successful!");
-    navigate("/dashboard");
+    try {
+      await authService.updatePassword({
+        old_password: formData.oldPassword,
+        password: formData.newPassword,
+        password_confirmation: formData.confirmPassword
+      });
+      setSuccess(true);
+      setFormData({
+        oldPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setErrors({});
+      setTouched({});
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Failed to update password");
+    }
   };
 
   return (
@@ -159,16 +180,34 @@ const ResetPassword = () => {
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
             {/* Page Title */}
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
-              Reset Password
+              Change Password
             </h1>
 
-            {/* Reset Password Card */}
+            {/* Change Password Card */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 sm:p-8 lg:py-5 lg:px-10 max-w-2xl">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8">
-                Set a new password
+                Update your password
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Old Password */}
+                <div>
+                  <Input
+                    label="Old Password"
+                    type="password"
+                    name="oldPassword"
+                    placeholder="Enter current password"
+                    value={formData.oldPassword}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                  />
+                  {touched.oldPassword && errors.oldPassword && (
+                    <p className="text-red-500 text-sm mt-1">
+                      {errors.oldPassword}
+                    </p>
+                  )}
+                </div>
+
                 {/* New Password */}
                 <div>
                   <Input
@@ -216,9 +255,9 @@ const ResetPassword = () => {
                     Cancel
                   </button>
 
-                  {/* Reset Password Button */}
+                  {/* Update Password Button */}
                   <div className="w-full sm:w-1/2">
-                    <Button text="Reset Password" type="submit" fullWidth />
+                    <Button text="Update Password" type="submit" fullWidth />
                   </div>
                 </div>
 
