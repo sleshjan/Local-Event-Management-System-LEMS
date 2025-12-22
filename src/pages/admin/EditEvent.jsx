@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import EventForm from '../../components/events/EventForm';
 import { eventService } from '../../services/eventService';
+import { normalizeEventData } from '../../utils/eventUtils';
 
 const EditEvent = () => {
   const { id } = useParams();
@@ -16,8 +17,8 @@ const EditEvent = () => {
     const fetchEvent = async () => {
       try {
         const response = await eventService.getEvent(id);
-        const event = response.data || response;
-        setEventData(event);
+        const normalized = normalizeEventData(response);
+        setEventData(normalized);
       } catch (error) {
         alert("Failed to load event");
         navigate('/admin/dashboard');

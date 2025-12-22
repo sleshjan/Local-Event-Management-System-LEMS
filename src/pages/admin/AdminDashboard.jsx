@@ -22,9 +22,20 @@ const AdminDashboard = () => {
 
         let eventsData = [];
 
-        // Priority 1: User specified path "data.other.data"
-        if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
+        // Priority 1: Standard API/Laravel paths
+        if (Array.isArray(response)) {
+          eventsData = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          eventsData = response.data;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          eventsData = response.data.data;
+        }
+        // Priority 2: User specified path
+        else if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
           eventsData = response.data.other.data;
+        }
+        else if (response?.other?.data && Array.isArray(response.other.data)) {
+          eventsData = response.other.data;
         }
 
         // Priority 2: Standard paths
@@ -106,14 +117,7 @@ const AdminDashboard = () => {
       )
   );
 
-  const handleDeleteEvent = async (id) => {
-    try {
-      await eventService.deleteEvent(id);
-      setEvents(currentEvents => currentEvents.filter(event => event.id !== id));
-    } catch (error) {
-      alert("Failed to delete event. Please try again.");
-    }
-  };
+
 
 
   return (
@@ -197,28 +201,25 @@ const AdminDashboard = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-4 lg:px-6 py-4 sm:py-6">
             {/* Stats Section */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Total Events</p>
-                <p className="text-3xl font-bold text-gray-900">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Total Events</p>
+                <p className="text-2xl font-bold text-gray-900">
                   {events.length}
                 </p>
               </div>
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Active Events</p>
-                <p className="text-3xl font-bold text-purple-600">
+              <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Active Events</p>
+                <p className="text-2xl font-bold text-purple-600">
                   {events.length}
                 </p>
               </div>
-              <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                <p className="text-sm text-gray-600 mb-1">Total Attendees</p>
-                <p className="text-3xl font-bold text-gray-900">
-                  {events.reduce(
-                    (sum, event) => sum + (event.attendees || 0),
-                    0
-                  )}
+              <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Total Views</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  0
                 </p>
               </div>
             </div>
@@ -244,7 +245,6 @@ const AdminDashboard = () => {
                     key={event.id || `admin-event-${index}`}
                     event={event}
                     role="admin"
-                    onDelete={handleDeleteEvent}
                   />
                 ))}
               </div>

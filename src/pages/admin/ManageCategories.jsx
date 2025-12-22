@@ -8,38 +8,64 @@ const ManageCategories = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [categories, setCategories] = useState([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [lastPage, setLastPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [success, setSuccess] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const categoriesPerPage = 10;
 
-  useEffect(() => {
-    loadCategories(currentPage);
-  }, [currentPage]);
-
-  const loadCategories = async (page = 1) => {
+  const loadCategories = async () => {
     try {
       setLoading(true);
+      setError(null);
+      // Fetch all categories (using high per_page to ensure we get them all for client-side pagination)
       const response = await categoryService.getCategories({
-        per_page: 10,
-        page: page
+        per_page: 1000,
+        page: 1
       });
 
-      if (response && response.data) {
-        const categoryData = response.data;
-        setCategories(categoryData.data || []);
-        setTotalCount(categoryData.total || 0);
-        setLastPage(categoryData.last_page || 1);
+      if (response) {
+        let categoryData = [];
+        // Handle various response formats
+        if (Array.isArray(response)) {
+          categoryData = response;
+        } else if (response.data && Array.isArray(response.data)) {
+          categoryData = response.data;
+        } else if (response.data?.data && Array.isArray(response.data.data)) {
+          categoryData = response.data.data;
+        }
+
+        setCategories(categoryData);
       }
-    } catch (error) {
-      // Error handling
+    } catch (err) {
+      setError("Failed to load categories. Please try again.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  // Pagination Logic (Copied from Manage Users)
+  const indexOfLastCategory = currentPage * categoriesPerPage;
+  const indexOfFirstCategory = indexOfLastCategory - categoriesPerPage;
+  const currentCategories = categories.slice(indexOfFirstCategory, indexOfLastCategory);
+  const totalPages = Math.ceil(categories.length / categoriesPerPage);
+
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
     }
   };
 
@@ -50,7 +76,7 @@ const ManageCategories = () => {
   const handleDelete = (category) => {
     setCategoryToDelete(category);
     setShowDeleteModal(true);
-    setError('');
+    setError(null);
     setSuccess('');
   };
 
@@ -59,7 +85,7 @@ const ManageCategories = () => {
 
     try {
       setDeleting(true);
-      setError('');
+      setError(null);
       await categoryService.deleteCategory(categoryToDelete.id);
 
       setSuccess(`Category "${categoryToDelete.name}" deleted successfully.`);
@@ -77,7 +103,6 @@ const ManageCategories = () => {
       setDeleting(false);
     }
   };
-
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
@@ -154,54 +179,56 @@ const ManageCategories = () => {
             <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">Total Categories</h3>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{totalCount}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{categories.length}</p>
               </div>
             </div>
 
             {/* Categories Table */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-gray-600">
-                  <thead className="bg-gray-50 text-gray-900 font-semibold border-b border-gray-200">
+            <div className="bg-white rounded-2xl border border-gray-200 shadow flex flex-col overflow-hidden">
+              <div className="overflow-x-auto flex-1">
+                <table className="min-w-full divide-y divide-gray-200 text-sm text-gray-600">
+                  <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-4">ID</th>
-                      <th className="px-6 py-4">Name</th>
-                      <th className="px-6 py-4">Slug</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.N.</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slug</th>
+                      <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-gray-200">
                     {loading ? (
                       <tr>
                         <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
                           <div className="flex flex-col items-center gap-2">
-                            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
                             <p>Loading categories...</p>
                           </div>
                         </td>
                       </tr>
-                    ) : categories.length > 0 ? (
-                      categories.map((category) => (
-                        <tr key={category.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 font-mono text-gray-500">#{category.id}</td>
-                          <td className="px-6 py-4">
+                    ) : currentCategories.length > 0 ? (
+                      currentCategories.map((category, index) => (
+                        <tr key={category.id} className="hover:bg-gray-50 transition-colors duration-150">
+                          <td className="px-6 py-4 whitespace-nowrap font-mono text-gray-500 text-xs">{indexOfFirstCategory + index + 1}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="font-semibold text-gray-900">{category.name}</span>
                           </td>
-                          <td className="px-6 py-4 font-mono text-xs bg-gray-50/50 rounded inline-block my-2 mx-6 px-2 py-1">
-                            {category.slug}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="font-mono text-[10px] bg-gray-50 text-gray-600 px-2 py-1 rounded">
+                              {category.slug}
+                            </span>
                           </td>
-                          <td className="px-6 py-4 text-right">
-                            <div className="flex justify-end gap-4">
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex justify-end gap-3">
                               <button
                                 onClick={() => handleEdit(category.id)}
-                                className="p-2.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                                 title="Edit Category"
                               >
                                 <Edit2 className="w-5 h-5" />
                               </button>
                               <button
                                 onClick={() => handleDelete(category)}
-                                className="p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                 title="Delete Category"
                               >
                                 <Trash2 className="w-5 h-5" />
@@ -213,10 +240,7 @@ const ManageCategories = () => {
                     ) : (
                       <tr>
                         <td colSpan="4" className="px-6 py-12 text-center text-gray-500">
-                          <div className="flex flex-col items-center gap-2">
-                            <Menu className="w-12 h-12 text-gray-200" />
-                            <p>No categories found.</p>
-                          </div>
+                          No categories found.
                         </td>
                       </tr>
                     )}
@@ -224,41 +248,56 @@ const ManageCategories = () => {
                 </table>
               </div>
 
-              {/* Pagination UI */}
-              {categories.length > 0 && lastPage > 1 && (
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
-                  <p className="text-sm text-gray-500">
-                    Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * 10 + 1}</span> to <span className="font-semibold text-gray-900">{Math.min(currentPage * 10, totalCount)}</span> of <span className="font-semibold text-gray-900">{totalCount}</span> categories
-                  </p>
-                  <div className="flex items-center gap-2">
+              {/* Pagination Controls (Matching Manage Users Exactly) */}
+              {categories.length > 0 && (
+                <div className="bg-white px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
+                  <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Showing <span className="font-medium">{indexOfFirstCategory + 1}</span> to <span className="font-medium">{Math.min(indexOfLastCategory, categories.length)}</span> of <span className="font-medium">{categories.length}</span> results
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                        <button
+                          onClick={prevPage}
+                          disabled={currentPage === 1}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Previous
+                        </button>
+                        <button
+                          disabled
+                          className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700"
+                        >
+                          Page {currentPage} of {totalPages || 1}
+                        </button>
+                        <button
+                          onClick={nextPage}
+                          disabled={currentPage === totalPages || totalPages === 0}
+                          className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages || totalPages === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                        >
+                          Next
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                  {/* Mobile Pagination */}
+                  <div className="flex items-center justify-between sm:hidden w-full">
                     <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1 || loading}
-                      className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      onClick={prevPage}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-700 bg-white hover:bg-gray-50'}`}
                     >
                       Previous
                     </button>
-
-                    <div className="hidden sm:flex items-center gap-1">
-                      {[...Array(lastPage)].map((_, i) => (
-                        <button
-                          key={i + 1}
-                          onClick={() => setCurrentPage(i + 1)}
-                          disabled={loading}
-                          className={`w-9 h-9 rounded-lg text-sm font-medium transition-all ${currentPage === i + 1
-                              ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-100'
-                              : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                        >
-                          {i + 1}
-                        </button>
-                      ))}
-                    </div>
-
+                    <span className="text-sm text-gray-700">
+                      Page {currentPage} of {totalPages || 1}
+                    </span>
                     <button
-                      onClick={() => setCurrentPage(prev => Math.min(lastPage, prev + 1))}
-                      disabled={currentPage === lastPage || loading}
-                      className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                      onClick={nextPage}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className={`relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md ${currentPage === totalPages || totalPages === 0 ? 'text-gray-300 cursor-not-allowed bg-gray-50' : 'text-gray-700 bg-white hover:bg-gray-50'}`}
                     >
                       Next
                     </button>

@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Users, Eye, Edit, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Eye, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import InterestTag from '../common/InterestTag';
 import Button from '../common/Button';
@@ -11,39 +11,65 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
     return null;
   }
 
+
+
   const {
     id,
     image,
+    name,
     title,
-    date,
+    start_date,
+    end_date,
     location,
     attendees,
-    categories
+    categories,
+    other,
+    data: nestedData
   } = event || {};
 
   const handleViewDetails = () => {
+    const rawSlug = event.slug || event.other?.data?.slug || nestedData?.other?.data?.slug;
+    const slug = rawSlug || (displayTitle ? displayTitle.toLowerCase().replace(/ /g, '-') + '-' + id : id);
+    const param = slug || id;
+
     if (role === 'user') {
-      navigate(`/event/${id}`, { state: { event } });
+      navigate(`/event/${param}`, { state: { event } });
     } else if (role === 'admin') {
-      navigate(`/admin/events/${id}`, { state: { event } });
+      navigate(`/admin/events/${param}`, { state: { event } });
     }
   };
 
   const handleEdit = () => {
-    navigate(`/admin/edit-event/${id}`, { state: { event } });
+    const rawSlug = event.slug || event.other?.data?.slug || nestedData?.other?.data?.slug;
+    const slug = rawSlug || (displayTitle ? displayTitle.toLowerCase().replace(/ /g, '-') + '-' + id : id);
+    const param = slug || id;
+
+    navigate(`/admin/edit-event/${param}`, { state: { event } });
   };
 
-  const handleDelete = () => {
-    if (window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      if (onDelete) onDelete(id);
+  // Helper to format ISO date string: 2025-12-11T14:30:01.000000Z -> 2025-12-11 14:30:01
+  const formatDateTime = (dt) => {
+    if (!dt || typeof dt !== 'string') return dt;
+    // Check if it contains 'T' to identify ISO format
+    if (dt.includes('T')) {
+      return dt.replace('T', ' ').split('.')[0];
     }
+    return dt;
   };
 
   // Safe checks for rendering
-  const displayTitle = title || 'Untitled Event';
-  const displayLocation = location || 'Location TBA';
-  const displayDate = date || 'Date TBA';
+  const displayTitle = name || title || 'Untitled Event';
+  // Use user-provided path: data.other.data.city (assuming event object or nested data)
+  const displayLocation = event.city || nestedData?.other?.data?.city || other?.data?.city || location || 'Location TBA';
+
+  const start = event.start_datetime || nestedData?.other?.data?.start_datetime || other?.data?.start_datetime || start_date;
+  const end = event.end_datetime || nestedData?.other?.data?.end_datetime || other?.data?.end_datetime || end_date;
+
+  const formattedStart = formatDateTime(start);
+  const formattedEnd = formatDateTime(end);
+
   const displayCategory = (categories && Array.isArray(categories) && categories.length > 0) ? categories[0] : null;
+  const displayStatus = event.status || nestedData?.other?.data?.status || other?.data?.status;
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
@@ -60,6 +86,22 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
         <div className="w-full h-full flex items-center justify-center bg-gray-300" style={{ display: image ? 'none' : 'flex' }}>
           <span className="text-gray-500">No Image</span>
         </div>
+
+        {/* Status Badge */}
+        {displayStatus && (
+          <div className="absolute top-3 right-3 z-10">
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-medium shadow-sm capitalize ${displayStatus.toLowerCase() === 'active' || displayStatus.toLowerCase() === 'open' || displayStatus.toLowerCase() === 'ongoing'
+              ? 'bg-green-500 text-white'
+              : displayStatus.toLowerCase() === 'upcoming' || displayStatus.toLowerCase() === 'pending'
+                ? 'bg-orange-500 text-white'
+                : displayStatus.toLowerCase() === 'completed' || displayStatus.toLowerCase() === 'closed'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-gray-500 text-white'
+              }`}>
+              {displayStatus}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Event Details */}
@@ -76,9 +118,18 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
           </div>
 
           {/* Date */}
-          <div className="flex items-center gap-2 text-gray-600">
-            <Calendar className="w-4 h-4 shrink-0" />
-            <span className="text-sm">{displayDate}</span>
+          <div className="flex items-start gap-2 text-gray-600">
+            <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="flex flex-col text-sm leading-relaxed font-medium">
+              {formattedStart && formattedEnd ? (
+                <>
+                  <span className="whitespace-nowrap">From {formattedStart}</span>
+                  <span className="whitespace-nowrap">To {formattedEnd}</span>
+                </>
+              ) : (
+                <span>{event.date && event.date !== 'Date TBA' ? event.date : 'TBA'}</span>
+              )}
+            </div>
           </div>
 
           {/* Location */}
@@ -87,19 +138,17 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
             <span className="text-sm line-clamp-1">{displayLocation}</span>
           </div>
 
-          {/* Attendees Count */}
+          {/* Views (Previously Attendees) */}
           <div className="flex items-center gap-2 text-gray-600">
-            <Users className="w-4 h-4 shrink-0" />
-            <span className="text-sm">
-              {attendees || 0} {(attendees === 1) ? 'attendee' : 'attendees'}
-            </span>
+            <Eye className="w-4 h-4 shrink-0" />
+            <span className="text-sm"></span>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="mt-4 pt-4 border-t border-gray-100">
           {role === 'admin' ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={handleViewDetails}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
@@ -108,7 +157,6 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
                 <Eye className="w-4 h-4" />
                 <span className="hidden sm:inline text-xs">View</span>
               </button>
-
               <button
                 onClick={handleEdit}
                 className="flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-100 text-purple-700 font-medium rounded-xl hover:bg-purple-200 transition-colors"
@@ -116,15 +164,6 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
               >
                 <Edit className="w-4 h-4" />
                 <span className="hidden sm:inline text-xs">Edit</span>
-              </button>
-
-              <button
-                onClick={handleDelete}
-                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-100 text-red-700 font-medium rounded-xl hover:bg-red-200 transition-colors"
-                title="Delete Event"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline text-xs">Delete</span>
               </button>
             </div>
           ) : (

@@ -35,7 +35,7 @@ function App() {
         <Route path="/my-events" element={<UserDashboard />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/become-organizer" element={<BecomeOrganizer />} />
-        <Route path="/event/:id" element={<EventDetails />} />
+        <Route path="/event/:slug" element={<EventDetails />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -43,7 +43,7 @@ function App() {
         <Route path="/admin/edit-category/:id" element={<EditCategory />} />
         <Route path="/admin/add-category" element={<AddCategory />} />
         <Route path="/admin/users" element={<ManageUsers />} />
-        <Route path="/admin/events/:id" element={<AdminEventDetails />} />
+        <Route path="/admin/events/:slug" element={<AdminEventDetails />} />
         <Route path="/admin/organizer-requests" element={<OrganizerRequests />} />
         <Route path="/admin/create-event" element={<CreateEvent />} />
         <Route path="/admin/edit-event/:id" element={<EditEvent />} />

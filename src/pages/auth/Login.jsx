@@ -187,6 +187,7 @@ const Login = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               disabled={loading}
+              autoComplete="current-password"
             />
             {touched.password && errors.password && (
               <p className="text-red-500 text-sm mt-1">{errors.password}</p>

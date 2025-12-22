@@ -38,9 +38,20 @@ const UserDashboard = () => {
 
         let eventsData = [];
 
-        // Priority 1: Explicit path requested by user: response.data.other.data
-        if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
+        // Priority 1: Standard API/Laravel paths
+        if (Array.isArray(response)) {
+          eventsData = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          eventsData = response.data;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          eventsData = response.data.data;
+        }
+        // Priority 2: User specified path
+        else if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
           eventsData = response.data.other.data;
+        }
+        else if (response?.other?.data && Array.isArray(response.other.data)) {
+          eventsData = response.other.data;
         }
 
         // Fallback: Recursive helper to find any array of objects that look like events

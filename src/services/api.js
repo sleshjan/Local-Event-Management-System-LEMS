@@ -1,5 +1,6 @@
 // Base configuration
-export const API_BASE_URL = '/api';
+// Base configuration
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 export const FILE_BASE_URL = '';
 
 /**
@@ -53,7 +54,7 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
     ...customConfig.headers,
   };
 
-  if (token) {
+  if (token && !customConfig.skipAuth) {
     // Token attached
     headers.Authorization = `Bearer ${token}`;
   } else {

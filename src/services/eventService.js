@@ -3,7 +3,7 @@ import apiRequest from './api';
 export const eventService = {
   // Get all events
   getAllEvents: async () => {
-    return await apiRequest('/event');
+    return await apiRequest('/event', { skipAuth: true });
   },
 
   // Get single event
@@ -21,9 +21,10 @@ export const eventService = {
 
   // Update event (admin)
   updateEvent: async (id, eventData) => {
+    const isFormData = eventData instanceof FormData;
     return await apiRequest(`/event/${id}`, {
-      method: 'PUT',
-      body: eventData // apiRequest handles JSON.stringify
+      method: isFormData ? 'POST' : 'PUT',
+      body: eventData
     });
   },
 

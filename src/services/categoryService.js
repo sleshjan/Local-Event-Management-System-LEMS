@@ -2,8 +2,9 @@ import apiRequest from "./api";
 
 export const categoryService = {
     // Get all categories (Reverted to GET as requested, supports pagination)
-    getCategories: async (params = { per_page: 10, page: 1 }) => {
-        const response = await apiRequest("/category", {
+    // Get all categories (Public resource endpoint)
+    getCategories: async (params = {}) => {
+        const response = await apiRequest("/resources/categories", {
             method: "GET",
             body: params
         });

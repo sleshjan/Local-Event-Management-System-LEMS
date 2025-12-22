@@ -14,7 +14,6 @@ import {
   User as UserIcon,
   ArrowLeft,
   Edit,
-  Trash2,
 } from "lucide-react";
 
 import { normalizeEventData } from '../../utils/eventUtils';
@@ -23,7 +22,7 @@ import { getImageUrl } from '../../services/api';
 const AdminEventDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { id } = useParams();
+  const { slug } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,9 +37,12 @@ const AdminEventDetails = () => {
         setLoading(false);
       }
 
-      if (id && id !== 'undefined') {
+      // Fetch by slug (or id if passed as slug param)
+      const fetchIdentifier = slug || locationStateEvent?.slug || locationStateEvent?.id;
+
+      if (fetchIdentifier && fetchIdentifier !== 'undefined') {
         try {
-          const response = await eventService.getEvent(id);
+          const response = await eventService.getEvent(fetchIdentifier);
           const freshData = response.data || response;
           setEvent(normalizeEventData(freshData));
           setLoading(false);
@@ -54,7 +56,7 @@ const AdminEventDetails = () => {
     };
     fetchEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, navigate]);
+  }, [slug, navigate]);
 
   if (loading && !event) {
     return <div className="p-10 text-center">Loading event details...</div>;
@@ -68,18 +70,6 @@ const AdminEventDetails = () => {
 
   const handleEdit = () => {
     navigate(`/admin/edit-event/${event.id}`, { state: { event } });
-  };
-
-  const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
-      try {
-        await eventService.deleteEvent(event.id);
-        alert("Event deleted successfully!");
-        navigate("/admin/dashboard");
-      } catch (error) {
-        alert("Failed to delete event");
-      }
-    }
   };
 
   return (
@@ -143,16 +133,10 @@ const AdminEventDetails = () => {
               <button
                 onClick={handleEdit}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+                title="Edit Event"
               >
                 <Edit className="w-4 h-4" />
                 <span className="hidden sm:inline">Edit Event</span>
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline">Delete</span>
               </button>
             </div>
           </div>

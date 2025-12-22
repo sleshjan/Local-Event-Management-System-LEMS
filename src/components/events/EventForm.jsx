@@ -4,6 +4,7 @@ import Input from '../common/Input';
 import Button from '../common/Button';
 import { Upload, X } from 'lucide-react';
 import { eventService } from '../../services/eventService';
+import { categoryService } from '../../services/categoryService';
 
 const EventForm = ({ initialData = null, mode = 'create' }) => {
   const navigate = useNavigate();
@@ -28,43 +29,69 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     organizerBio: ''
   });
 
+  const [imageFile, setImageFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
 
-  // Available categories
-  const availableCategories = [
-    'Music', 'Concert', 'Tech', 'Workshop', 'AI & Data', 'Design Talks',
-    'Food & Drink', 'Wine & Tastings', 'Coffee & Brunch', 'Vegan & Healthy',
-    'Outdoors', 'Hiking & Outdoors', 'Fitness & Yoga', 'Cycling', 'Mindfulness',
-    'Art & Design', 'Culture', 'Theatre', 'Photography', 'Museums',
-    'Social', 'Networking', 'Volunteering', 'Language Exchange', 'Board Games'
-  ];
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsCategoriesLoading(true);
+        const response = await categoryService.getCategories({ per_page: 100 });
+        let cats = [];
+        if (Array.isArray(response)) {
+          cats = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          cats = response.data;
+        } else if (response?.data?.data && Array.isArray(response.data.data)) {
+          cats = response.data.data;
+        }
+
+        setAvailableCategories(cats);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+      } finally {
+        setIsCategoriesLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   // Populate form if editing
   useEffect(() => {
     if (initialData) {
+      // If categories are objects, extract IDs
+      const sourceCats = initialData.categoryObjects || initialData.categories || [];
+      const categoryIds = sourceCats.map(c =>
+        typeof c === 'object' ? (c.id || c.category_id) : c
+      );
+
       setFormData({
-        title: initialData.title || '',
+        title: initialData.title || initialData.name || '',
         description: initialData.description || '',
-        startDate: initialData.startDate || '',
-        endDate: initialData.endDate || '',
-        startTime: initialData.startTime || initialData.time || '',
-        endTime: initialData.endTime || '',
+        startDate: initialData.startDate || (initialData.start_datetime ? initialData.start_datetime.replace('T', ' ').split(' ')[0] : ''),
+        endDate: initialData.endDate || (initialData.end_datetime ? initialData.end_datetime.replace('T', ' ').split(' ')[0] : ''),
+        startTime: initialData.startTime || (initialData.start_datetime ? initialData.start_datetime.replace('T', ' ').split(' ')[1]?.substring(0, 5) : ''),
+        endTime: initialData.endTime || (initialData.end_datetime ? initialData.end_datetime.replace('T', ' ').split(' ')[1]?.substring(0, 5) : ''),
         street: initialData.street || '',
         venue: initialData.venue || '',
-        location: initialData.location || '',
+        location: initialData.location || initialData.city || '',
         latitude: initialData.latitude || '',
         longitude: initialData.longitude || '',
-        categories: initialData.categories || [],
-        price: initialData.price || '',
-        maxParticipants: initialData.maxParticipants || '',
+        categories: categoryIds,
+        price: initialData.seat_price || initialData.price || '',
+        maxParticipants: initialData.total_seat || initialData.maxParticipants || '',
         duration: initialData.duration || '',
-        image: initialData.image || '',
+        image: initialData.cover_image || initialData.image || '',
         organizer: initialData.organizer || '',
         organizerBio: initialData.organizerBio || ''
       });
-      setImagePreview(initialData.image);
+      setImagePreview(initialData.cover_image || initialData.image);
     }
   }, [initialData]);
 
@@ -93,10 +120,10 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     validateField(name, formData[name]);
   };
 
-  const handleCategoryToggle = (category) => {
-    const updatedCategories = formData.categories.includes(category)
-      ? formData.categories.filter(c => c !== category)
-      : [...formData.categories, category];
+  const handleCategoryToggle = (categoryId) => {
+    const updatedCategories = formData.categories.includes(categoryId)
+      ? formData.categories.filter(id => id !== categoryId)
+      : [...formData.categories, categoryId];
 
     setFormData({
       ...formData,
@@ -127,12 +154,14 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         return;
       }
 
+      setImageFile(file); // Store raw file
+
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
         setFormData({
           ...formData,
-          image: reader.result
+          image: reader.result // Keep for preview/logic, but submission uses imageFile
         });
       };
       reader.readAsDataURL(file);
@@ -141,6 +170,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
   const removeImage = () => {
     setImagePreview(null);
+    setImageFile(null);
     setFormData({
       ...formData,
       image: ''
@@ -184,12 +214,14 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         if (!value.trim()) error = 'Location is required';
         break;
       case 'latitude':
-        if (value && (isNaN(value) || value < -90 || value > 90)) {
+        if (!value) error = 'Latitude is required';
+        else if (isNaN(value) || value < -90 || value > 90) {
           error = 'Latitude must be between -90 and 90';
         }
         break;
       case 'longitude':
-        if (value && (isNaN(value) || value < -180 || value > 180)) {
+        if (!value) error = 'Longitude is required';
+        else if (isNaN(value) || value < -180 || value > 180) {
           error = 'Longitude must be between -180 and 180';
         }
         break;
@@ -221,7 +253,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     // Validate all fields
     const fieldNames = [
       'title', 'description', 'startDate', 'endDate', 'startTime', 'endTime',
-      'street', 'venue', 'location', 'maxParticipants', 'organizer'
+      'street', 'venue', 'location', 'latitude', 'longitude', 'maxParticipants', 'organizer'
     ];
     const newErrors = {};
     let hasErrors = false;
@@ -251,18 +283,80 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       return;
     }
 
+    // Build FormData
+    const data = new FormData();
+    data.append('title', formData.title);
+    data.append('description', formData.description);
+    data.append('start_datetime', `${formData.startDate} ${formData.startTime}:00`);
+    data.append('end_datetime', `${formData.endDate} ${formData.endTime}:00`);
+    data.append('street', formData.street);
+    data.append('venue', formData.venue);
+    data.append('city', formData.location);
+    data.append('latitude', formData.latitude);
+    data.append('longitude', formData.longitude);
+    data.append('total_seat', parseInt(formData.maxParticipants));
+    data.append('seat_price', parseFloat(formData.price || 0));
+    data.append('organizer', formData.organizer);
+    data.append('organizer_bio', formData.organizerBio || '');
+    data.append('duration', formData.duration || '0');
+
+    // Append Categories (check backend expectation)
+    formData.categories.forEach((cat, index) => {
+      data.append(`categories[${index}]`, cat);
+    });
+
+    // Append image file if exists
+    if (imageFile) {
+      data.append('cover_image', imageFile);
+    } else if (mode === 'create') {
+      // If creating and no image, this might fail backend validation if required
+      // But let's assume valid because we check previews
+      // If required by backend, we should have a frontend check too?
+      // But user said "I have put an image", so imageFile should be set.
+    }
+
+    // If Updating, method spoofing might be needed for Laravel/PHP if using FormData
+    // because standard PUT requests don't support multipart/form-data well.
+    // However, if the backend endpoint is strictly POST, removing _method avoids a 405 error.
+    // if (mode !== 'create') {
+    //   data.append('_method', 'PUT');
+    // }
+
     // Submit to API
     try {
+      // Note: eventService.updateEvent uses PUT method. 
+      // If backend fails to read files on PUT, we might need to change service to use POST + _method
+      // modifying the service call for update might be necessary if it fails.
+
       if (mode === 'create') {
-        await eventService.createEvent(formData);
+        const response = await eventService.createEvent(data);
         alert('Event created successfully!');
       } else {
-        await eventService.updateEvent(initialData.id, formData);
+        // For updates with files, use POST usually, but let's try calling updateEvent 
+        // which might need mod to use POST if we passed _method
+        const response = await eventService.updateEvent(initialData.id, data);
         alert('Event updated successfully!');
       }
       navigate('/admin/dashboard');
     } catch (error) {
-      alert(error.message || "Something went wrong.");
+      console.error('Error submitting event:', error);
+
+      // Extract detailed error message
+      let errorMessage = 'Something went wrong.';
+
+      if (error.message) {
+        errorMessage = error.message;
+      }
+
+      // If there are validation errors from backend
+      if (error.errors && typeof error.errors === 'object') {
+        const errorDetails = Object.entries(error.errors)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        errorMessage = `Validation errors:\n${errorDetails}`;
+      }
+
+      alert(errorMessage);
     }
   };
 
@@ -461,7 +555,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Input
-              label="Latitude (Optional)"
+              label="Latitude"
               type="text"
               name="latitude"
               placeholder="40.7829"
@@ -475,7 +569,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
           </div>
           <div>
             <Input
-              label="Longitude (Optional)"
+              label="Longitude"
               type="text"
               name="longitude"
               placeholder="-73.9654"
@@ -495,21 +589,40 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         <label className="block text-gray-700 text-sm font-medium mb-3">
           Categories (Select at least one)
         </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {availableCategories.map((category) => (
-            <button
-              key={category}
-              type="button"
-              onClick={() => handleCategoryToggle(category)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${formData.categories.includes(category)
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+
+        {isCategoriesLoading ? (
+          <div className="flex items-center gap-2 py-4 text-gray-500 italic text-sm">
+            <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            Loading categories...
+          </div>
+        ) : availableCategories.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {availableCategories.map((category) => {
+              // Defensive check for category structure
+              if (!category || !category.id || !category.name) {
+                console.warn('Invalid category object:', category);
+                return null;
+              }
+
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => handleCategoryToggle(category.id)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${formData.categories.includes(category.id)
+                    ? 'bg-purple-600 text-white shadow-md transform scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {category.name}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm italic">No categories found. Please create some in Manage Categories.</p>
+        )}
+
         {errors.categories && (
           <p className="text-red-500 text-sm mt-2">{errors.categories}</p>
         )}
