@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import { normalizeEventData } from '../../utils/eventUtils';
-import { getImageUrl } from '../../services/api';
+import { getImageUrl, parseApiError } from '../../services/api';
 
 const AdminEventDetails = () => {
   const navigate = useNavigate();
@@ -70,6 +70,28 @@ const AdminEventDetails = () => {
 
   const handleEdit = () => {
     navigate(`/admin/edit-event/${event.id}`, { state: { event } });
+  };
+
+  const handleCancelEvent = async () => {
+    if (window.confirm("Are you sure you want to cancel this event? This action cannot be reverted.")) {
+      try {
+        await eventService.cancelEvent(event.id);
+        alert("Event cancelled successfully.");
+        navigate("/admin/dashboard");
+      } catch (error) {
+        let message = parseApiError(error);
+
+        // If it's a 422 error, it's likely a status issue (trying to cancel past/ongoing event)
+        if (error.status === 422 || (error.response && error.response.status === 422)) {
+          // If the backend didn't provide a specific useful message (generic 422), give a hint
+          if (message.includes("Unprocessable Content") || message.includes("Validation failed")) {
+            message = "Ongoing or Past events cannot be cancelled.";
+          }
+        }
+
+        alert(message);
+      }
+    }
   };
 
   return (
@@ -129,14 +151,23 @@ const AdminEventDetails = () => {
             </div>
 
             {/* Admin Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={handleEdit}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-bold shadow-sm"
                 title="Edit Event"
               >
-                <Edit className="w-4 h-4" />
-                <span className="hidden sm:inline">Edit Event</span>
+                <Edit className="w-5 h-5" />
+                <span>Edit Event</span>
+              </button>
+
+              <button
+                onClick={handleCancelEvent}
+                className="flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-bold shadow-sm"
+                title="Cancel Event"
+              >
+                <X className="w-5 h-5" />
+                <span>Cancel Event</span>
               </button>
             </div>
           </div>
@@ -155,12 +186,17 @@ const AdminEventDetails = () => {
             {/* Event Image */}
             <div className="w-full h-64 sm:h-96 bg-gray-200 rounded-3xl overflow-hidden mb-8">
               {event.image ? (
-                <img
-                  src={getImageUrl(event.image)}
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
+                <>
+                  <img
+                    src={getImageUrl(event.image)}
+                    alt={event.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  />
+                  <div className="w-full h-full flex items-center justify-center bg-gray-300 hidden">
+                    <span className="text-gray-500">No Image</span>
+                  </div>
+                </>
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gray-300">
                   <span className="text-gray-500">No Image</span>
@@ -258,6 +294,19 @@ const AdminEventDetails = () => {
                         {event.time && (
                           <p className="text-sm text-gray-600">{event.time}</p>
                         )}
+                        {event.endDate && (
+                          <div className="mt-1">
+                            <p className="text-sm text-gray-600 font-medium">Ends:</p>
+                            <p className="text-sm text-gray-600">
+                              {event.endDate}
+                            </p>
+                            {event.endTime && (
+                              <p className="text-sm text-gray-600">
+                                {event.endTime}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -271,6 +320,20 @@ const AdminEventDetails = () => {
                         <p className="text-sm text-gray-600">
                           {event.location}
                         </p>
+                        {event.venue && (
+                          <p className="text-sm text-gray-500">{event.venue}</p>
+                        )}
+                        {event.mapUrl && (
+                          <a
+                            href={event.mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-xl hover:bg-purple-200 transition-colors font-semibold text-sm w-full justify-center group"
+                          >
+                            <MapPin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            View on Map
+                          </a>
+                        )}
                       </div>
                     </div>
                   )}
@@ -317,7 +380,7 @@ const AdminEventDetails = () => {
                         <p className="text-sm text-gray-600">
                           {event.price === 0 || event.price === "0"
                             ? "Free"
-                            : `$${event.price}`}
+                            : `Rs. ${event.price}`}
                         </p>
                       </div>
                     </div>

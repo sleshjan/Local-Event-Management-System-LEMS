@@ -53,9 +53,9 @@ const ProfilePage = () => {
                 setUser(profileData);
                 setFormData({
                     name: profileData.name || '',
-                    municipality_id: profileData.municipality_id || '',
-                    province: profileData.province || '',
-                    district: profileData.district || '',
+                    municipality_id: profileData.address?.municipality?.id || profileData.municipality_id || '',
+                    province: profileData.address?.province?.name || profileData.province || '',
+                    district: profileData.address?.district?.name || profileData.district || '',
                     ward_no: profileData.ward_no || '',
                     street: profileData.street || '',
                     phone_number: profileData.phone || profileData.phone_number || profileData.phone_no || '',
@@ -75,7 +75,7 @@ const ProfilePage = () => {
         fetchProfile();
     }, []);
 
-    // Debug Profile Picture
+    // Debug Profile Picture and Verification
     useEffect(() => {
         if (user) {
             // Processing basic flags
@@ -244,14 +244,14 @@ const ProfilePage = () => {
                                                 />
                                                 <button
                                                     type="button"
-                                                    disabled={!!user?.email_verified_at}
+                                                    disabled={!!user?.email_verified_at || !!user?.is_email_verified}
                                                     onClick={async () => {
                                                         try {
                                                             await authService.resendVerification(user.email);
                                                             alert("Verification email sent!");
                                                             // Optimistically update if successful
                                                             const now = new Date().toISOString();
-                                                            const updated = { ...user, email_verified_at: now };
+                                                            const updated = { ...user, email_verified_at: now, is_email_verified: true };
                                                             setUser(updated);
                                                             const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
                                                             localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
@@ -260,7 +260,7 @@ const ProfilePage = () => {
                                                             if (err.status === 422 && errorMsg.toLowerCase().includes("already verified")) {
                                                                 alert("Email is already verified.");
                                                                 const now = new Date().toISOString();
-                                                                const updated = { ...user, email_verified_at: now };
+                                                                const updated = { ...user, email_verified_at: now, is_email_verified: true };
                                                                 setUser(updated);
                                                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
                                                                 localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
@@ -269,12 +269,12 @@ const ProfilePage = () => {
                                                             }
                                                         }
                                                     }}
-                                                    className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.email_verified_at
+                                                    className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.email_verified_at || user?.is_email_verified
                                                         ? "bg-green-100 text-green-700 cursor-not-allowed border border-green-200"
                                                         : "bg-purple-100 text-purple-700 hover:bg-purple-200"
                                                         }`}
                                                 >
-                                                    {user?.email_verified_at ? "Email Verified" : "Verify Email"}
+                                                    {user?.email_verified_at || user?.is_email_verified ? "Email Verified" : "Verify Email"}
                                                 </button>
                                             </div>
                                         </div>
@@ -289,13 +289,13 @@ const ProfilePage = () => {
                                                     value={formData.phone_number || user?.phone_number || ''}
                                                     onChange={handleChange}
                                                     placeholder="Enter phone number"
-                                                    disabled={!!user?.phone_verified_at}
-                                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${user?.phone_verified_at ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                                    disabled={!!user?.phone_verified_at || !!user?.is_phone_verified}
+                                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${(user?.phone_verified_at || user?.is_phone_verified) ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
                                                 />
                                                 {(formData.phone_number || user?.phone_number) && (
                                                     <button
                                                         type="button"
-                                                        disabled={!!user?.phone_verified_at}
+                                                        disabled={!!user?.phone_verified_at || !!user?.is_phone_verified}
                                                         onClick={async () => {
                                                             const phoneToVerify = formData.phone_number || user?.phone_number || '';
                                                             const phoneRegex = /^\d{10}$/;
@@ -315,7 +315,7 @@ const ProfilePage = () => {
                                                                 alert("Phone verified successfully!");
                                                                 // Update state and localStorage immediately
                                                                 const now = new Date().toISOString();
-                                                                const updated = { ...user, phone_verified_at: now };
+                                                                const updated = { ...user, phone_verified_at: now, is_phone_verified: true };
                                                                 setUser(updated);
                                                                 const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
                                                                 localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
@@ -324,7 +324,7 @@ const ProfilePage = () => {
                                                                 if (err.status === 422 && errorMsg.toLowerCase().includes("already verified")) {
                                                                     alert("Phone number is already verified.");
                                                                     const now = new Date().toISOString();
-                                                                    const updated = { ...user, phone_verified_at: now };
+                                                                    const updated = { ...user, phone_verified_at: now, is_phone_verified: true };
                                                                     setUser(updated);
                                                                     const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
                                                                     localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
@@ -333,12 +333,12 @@ const ProfilePage = () => {
                                                                 }
                                                             }
                                                         }}
-                                                        className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.phone_verified_at
+                                                        className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.phone_verified_at || user?.is_phone_verified
                                                             ? "bg-green-100 text-green-700 cursor-not-allowed border border-green-200"
                                                             : "bg-purple-100 text-purple-700 hover:bg-purple-200"
                                                             }`}
                                                     >
-                                                        {user?.phone_verified_at ? "Phone Verified" : "Verify Phone"}
+                                                        {user?.phone_verified_at || user?.is_phone_verified ? "Phone Verified" : "Verify Phone"}
                                                     </button>
                                                 )}
                                             </div>
@@ -417,8 +417,26 @@ const ProfilePage = () => {
                                         <h3 className="text-lg font-medium text-gray-900 mb-4 border-b pb-2">All Details</h3>
                                         <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                             {Object.entries(user || {}).map(([key, value]) => {
+                                                // Handle address object specifically
+                                                if (key === 'address' && value && typeof value === 'object') {
+                                                    const parts = [
+                                                        value.municipality?.name,
+                                                        value.district?.name,
+                                                        value.province?.name
+                                                    ].filter(Boolean);
+
+                                                    const addressString = parts.length > 0 ? parts.join(', ') : 'N/A';
+
+                                                    return (
+                                                        <div key={key}>
+                                                            <dt className="text-sm text-gray-500">Address</dt>
+                                                            <dd className="text-base font-medium text-gray-900 mt-1">{addressString}</dd>
+                                                        </div>
+                                                    );
+                                                }
+
                                                 if (
-                                                    ['id', 'profile_picture', 'interests', 'email_verified_at', 'created_at', 'updated_at', 'is_admin', 'is_organizer', 'role', 'token'].includes(key) ||
+                                                    ['id', 'profile_picture', 'interests', 'email_verified_at', 'created_at', 'updated_at', 'is_admin', 'is_organizer', 'role', 'token', 'address', 'municipality_id'].includes(key) ||
                                                     typeof value === 'object'
                                                 ) return null;
 
@@ -432,7 +450,6 @@ const ProfilePage = () => {
                                                     </div>
                                                 )
                                             })}
-                                            {!user?.municipality_id && <div><dt className="text-sm text-gray-500">Municipality Id</dt><dd className="text-base font-medium text-gray-900 mt-1">N/A</dd></div>}
                                             {!user?.ward_no && <div><dt className="text-sm text-gray-500">Ward No</dt><dd className="text-base font-medium text-gray-900 mt-1">N/A</dd></div>}
                                             {!user?.street && <div><dt className="text-sm text-gray-500">Street</dt><dd className="text-base font-medium text-gray-900 mt-1">N/A</dd></div>}
                                         </dl>

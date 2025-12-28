@@ -40,5 +40,20 @@ export const eventService = {
     return await apiRequest(`/event/${eventId}/register`, {
       method: 'POST'
     });
+  },
+
+  // Cancel event registration (user)
+  cancelRegistration: async (id, data) => {
+    return await apiRequest(`/event-registration/${id}/cancel`, {
+      method: 'POST',
+      body: data
+    });
+  },
+
+  // Cancel event (admin)
+  cancelEvent: async (id) => {
+    return await apiRequest(`/event/${id}/cancel`, {
+      method: 'POST'
+    });
   }
 };

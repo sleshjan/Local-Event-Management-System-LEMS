@@ -119,14 +119,16 @@ const Sidebar = ({ userInterests = [] }) => {
               <span className="text-sm font-medium">Reset Password</span>
             </button>
 
-            {/* Be an Organizer */}
-            <button
-              onClick={handleBeOrganizer}
-              className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left border-t border-gray-100"
-            >
-              <User className="w-5 h-5" />
-              <span className="text-sm font-medium">Be an Organizer</span>
-            </button>
+            {/* Be an Organizer - Hide if already an organizer */}
+            {JSON.parse(localStorage.getItem("user") || "{}")?.role !== "organizer" && (
+              <button
+                onClick={handleBeOrganizer}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left border-t border-gray-100"
+              >
+                <User className="w-5 h-5" />
+                <span className="text-sm font-medium">Be an Organizer</span>
+              </button>
+            )}
 
             {/* Logout */}
             <button
@@ -136,15 +138,6 @@ const Sidebar = ({ userInterests = [] }) => {
               <LogOut className="w-5 h-5" />
               <span className="text-sm font-medium">Logout</span>
             </button>
-
-            {/* Admin btn testtttttttttttttttttttttttttttttttttttt*/}
-            {/* <button
-              onClick={gotoAdmin}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium">Go to Admin</span>
-            </button> */}
           </div>
         )}
       </div>

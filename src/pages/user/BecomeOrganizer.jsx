@@ -6,6 +6,7 @@ import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
 import { organizerService } from "../../services/organizerService";
 import { userService } from "../../services/userService";
+import { parseApiError } from "../../services/api";
 
 const BecomeOrganizer = () => {
   const navigate = useNavigate();
@@ -111,7 +112,10 @@ const BecomeOrganizer = () => {
       const currentUser = await userService.getProfile();
       const userData = currentUser.data || currentUser;
 
-      if (!userData.email_verified_at || !userData.phone_verified_at) {
+      const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
+      const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
+
+      if (!isEmailVerified || !isPhoneVerified) {
         alert("Both Email and Phone must be verified to become an organizer. Please verify them in your Profile settings.");
         navigate('/profile');
         return;
@@ -150,7 +154,7 @@ const BecomeOrganizer = () => {
       alert("Your request to become an organizer has been submitted!");
       navigate("/dashboard");
     } catch (error) {
-      alert(error.message || "Failed to submit request");
+      alert(parseApiError(error));
     }
   };
 

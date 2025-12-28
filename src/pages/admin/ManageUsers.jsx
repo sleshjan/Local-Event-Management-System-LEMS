@@ -137,6 +137,9 @@ const ManageUsers = () => {
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Role
                         </th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Verified
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -158,14 +161,21 @@ const ManageUsers = () => {
                             {user.email}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_admin
-                              ? 'bg-purple-100 text-purple-800'
-                              : user.is_organizer
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-green-100 text-green-800'
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${(user.role === 'admin' || user.role === 'Admin')
+                                ? 'bg-purple-100 text-purple-800'
+                                : (user.role === 'organizer' || user.role === 'Organizer')
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-green-100 text-green-800'
                               }`}>
-                              {user.is_admin ? 'Admin' : user.is_organizer ? 'Organizer' : 'User'}
+                              {user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'User'}
                             </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {user.is_verified ? (
+                              <Check className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-gray-400" />
+                            )}
                           </td>
                         </tr>
                       ))}

@@ -19,6 +19,9 @@ import EditEvent from './pages/admin/EditEvent';
 import ProfilePage from './pages/user/ProfilePage';
 import ResetPasswordConfirm from "./pages/auth/ResetPasswordConfirm";
 
+import MyEvents from "./pages/user/MyEvents";
+import UserCreateEvent from "./pages/user/CreateEvent";
+
 function App() {
   return (
     <BrowserRouter>
@@ -32,7 +35,8 @@ function App() {
 
         {/* User routes */}
         <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/my-events" element={<UserDashboard />} />
+        <Route path="/my-events" element={<MyEvents />} />
+        <Route path="/user/create-event" element={<UserCreateEvent />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/become-organizer" element={<BecomeOrganizer />} />
         <Route path="/event/:slug" element={<EventDetails />} />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import EventForm from '../../components/events/EventForm';
@@ -9,18 +9,33 @@ import { normalizeEventData } from '../../utils/eventUtils';
 const EditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchEvent = async () => {
+      // 1. Check if event data was passed via navigation state
+      if (location.state?.event) {
+        console.log("Loading event from state:", location.state.event);
+        // Ensure it's normalized (it might be already if coming from EventCard/Details)
+        // But running it through normalizeEventData again is safe and ensures consistency
+        const normalized = normalizeEventData(location.state.event);
+        setEventData(normalized);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch from API if not in state
       try {
+        console.log("Fetching event from API:", id);
         const response = await eventService.getEvent(id);
         const normalized = normalizeEventData(response);
         setEventData(normalized);
       } catch (error) {
-        alert("Failed to load event");
+        console.error("Failed to load event:", error);
+        alert("Failed to load event details");
         navigate('/admin/dashboard');
       } finally {
         setLoading(false);
@@ -28,7 +43,7 @@ const EditEvent = () => {
     };
 
     fetchEvent();
-  }, [id, navigate]);
+  }, [id, navigate, location.state]);
 
   if (loading) {
     return (

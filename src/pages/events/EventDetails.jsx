@@ -1,77 +1,82 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
-import { eventService } from '../../services/eventService';
-import Sidebar from '../../components/common/Sidebar';
-import Button from '../../components/common/Button';
-import InterestTag from '../../components/common/InterestTag';
-import { Menu, X, Calendar, MapPin, Users, Clock, DollarSign, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
+import Sidebar from "../../components/common/Sidebar";
+import InterestTag from "../../components/common/InterestTag";
+import { eventService } from "../../services/eventService";
+import { userService } from "../../services/userService";
+import {
+  Menu,
+  X,
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  DollarSign,
+  User as UserIcon,
+  ArrowLeft,
+  Share2,
+} from "lucide-react";
 
-
-import { userService } from '../../services/userService';
 import { normalizeEventData } from '../../utils/eventUtils';
 import { getImageUrl } from '../../services/api';
 
 const EventDetails = () => {
   const navigate = useNavigate();
-  const { slug } = useParams();
   const location = useLocation();
+  const { slug } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [eventData, setEventData] = useState(null);
+  const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // User specific state
+  const [userInterests, setUserInterests] = useState([]);
   const [joining, setJoining] = useState(false);
 
-  // Get event data from navigation state if available (for instant load)
+  // Get event data from navigation state if available
   const locationStateEvent = location.state?.event;
 
-  // Get user interests from backend (same as Dashboard)
-  const [userInterests, setUserInterests] = useState([]);
-
+  // Fetch User Interests for Sidebar (User View Specific)
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const profile = await userService.getProfile();
-        // Handle potentially different response structures
         const interests = profile.interests || profile.data?.interests || [];
         setUserInterests(interests);
       } catch (err) {
-        // Sidebar profile error
+        // User might not be logged in, ignoring
       }
     };
     loadProfile();
   }, []);
 
   useEffect(() => {
-    const loadEvent = async () => {
-      // If we have initial data (from link state), normalize and show it first
+    const fetchEvent = async () => {
       if (locationStateEvent) {
-        setEventData(normalizeEventData(locationStateEvent));
+        setEvent(normalizeEventData(locationStateEvent));
         setLoading(false);
       }
 
-      // Identify what to fetch with: slug from URL, or slug/id from state
+      // Fetch by slug (or id if passed as slug param)
       const fetchIdentifier = slug || locationStateEvent?.slug || locationStateEvent?.id;
 
       if (fetchIdentifier && fetchIdentifier !== 'undefined') {
         try {
-          // Use eventService.getEvent which calls /event/{id} (or /event/{slug})
           const response = await eventService.getEvent(fetchIdentifier);
-          // Normalize the fresh data (handles data.other.data internally)
-          const freshData = normalizeEventData(response);
-          setEventData(freshData);
+          const freshData = response.data || response;
+          setEvent(normalizeEventData(freshData));
           setLoading(false);
         } catch (error) {
-          // Fallback to location state if API fails, otherwise broken
           if (!locationStateEvent) {
-            console.error("Failed to load event details");
+            console.error("Event not found");
+            // Optional: navigate to dashboard on error?
+            // navigate("/dashboard"); 
           }
         }
       } else if (!locationStateEvent) {
-        // No ID/Slug found at all
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     };
-
-    loadEvent();
+    fetchEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, navigate]);
 
@@ -79,7 +84,13 @@ const EventDetails = () => {
     if (joining) return;
 
     // Check if user is logged in
-    const currentUser = userService.getProfile ? (await userService.getProfile()) : JSON.parse(localStorage.getItem('user'));
+    let currentUser = null;
+    try {
+      currentUser = await userService.getProfile();
+    } catch (e) {
+      const local = localStorage.getItem('user');
+      if (local) currentUser = JSON.parse(local);
+    }
 
     if (!currentUser) {
       alert("Please login to join events.");
@@ -87,7 +98,7 @@ const EventDetails = () => {
       return;
     }
 
-    const userData = currentUser.data || currentUser;
+    const userData = currentUser.data || currentUser; // Handle potential structure diffs
 
     if (!userData.email_verified_at) {
       alert("Your email must be verified to join events. Please go to your profile settings to verify your email.");
@@ -96,11 +107,12 @@ const EventDetails = () => {
 
     setJoining(true);
     try {
-      await eventService.registerForEvent(eventData.id);
-      alert(`Successfully joined: ${eventData.title}!`);
-      // Reload data
-      const response = await eventService.getEvent(eventData.id);
-      setEventData(normalizeEventData(response));
+      await eventService.registerForEvent(event.id);
+      alert(`Successfully joined: ${event.title}!`);
+      // Reload data to update attendees count
+      const response = await eventService.getEvent(event.id);
+      const freshData = response.data || response;
+      setEvent(normalizeEventData(freshData));
     } catch (error) {
       alert(error.message || "Failed to join event");
     } finally {
@@ -108,15 +120,15 @@ const EventDetails = () => {
     }
   };
 
-  if (loading && !eventData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-600"></div>
-      </div>
-    );
+  const handleBack = () => {
+    navigate("/dashboard");
+  };
+
+  if (loading && !event) {
+    return <div className="p-10 text-center">Loading event details...</div>;
   }
 
-  if (!eventData) return null;
+  if (!event) return null;
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -149,211 +161,248 @@ const EventDetails = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top Navigation Bar */}
-        <div className="absolute top-0 left-0 right-0 z-10 p-4 flex items-center justify-between pointer-events-none">
-          <div className="pointer-events-auto">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white rounded-full transition-all"
-            >
-              <Menu className="w-6 h-6 text-gray-700" />
-            </button>
-          </div>
-          <div className="pointer-events-auto">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-white/90 backdrop-blur-sm shadow-sm hover:bg-white rounded-full transition-all text-sm font-medium text-gray-700 flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              All Events
-            </button>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar */}
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {/* Mobile Menu Button */}
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <Menu className="w-6 h-6" />
+              </button>
+
+              {/* Back Button */}
+              <button
+                onClick={handleBack}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                <span className="font-medium hidden sm:inline">
+                  Back to Events
+                </span>
+              </button>
+            </div>
+
+            {/* User Action Buttons (Empty in header for now, or could have Share) */}
+            <div className="flex items-center gap-2">
+              {/* Placeholder for header actions if needed */}
+            </div>
           </div>
         </div>
 
+        {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          {/* Hero Section */}
-          <div className="relative w-full h-[50vh] min-h-[400px]">
-            {eventData.image ? (
-              <img
-                src={getImageUrl(eventData.image)}
-                alt={eventData.title}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-purple-800 to-indigo-900 flex items-center justify-center">
-                <Calendar className="w-24 h-24 text-white/20" />
-              </div>
-            )}
-            {/* Fallback for Image Error */}
-            <div className="hidden w-full h-full bg-gradient-to-br from-purple-800 to-indigo-900 absolute inset-0 items-center justify-center">
-              <Calendar className="w-24 h-24 text-white/20" />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-90"></div>
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
 
-            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-10 lg:p-12 text-white">
-              <div className="max-w-5xl mx-auto">
-                <div className="flex flex-wrap gap-2 mb-4 animate-in slide-in-from-bottom-4 duration-500">
-                  {eventData.categories && eventData.categories.map((category, index) => (
-                    <span key={index} className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-sm font-medium border border-white/10">
-                      {category}
-                    </span>
-                  ))}
-                  {eventData.price === 0 && (
-                    <span className="px-3 py-1 rounded-full bg-green-500/80 backdrop-blur-md text-sm font-bold shadow-lg">
-                      FREE
-                    </span>
-                  )}
+            {/* Event Image */}
+            <div className="w-full h-64 sm:h-96 bg-gray-200 rounded-3xl overflow-hidden mb-8">
+              {event.image ? (
+                <img
+                  src={getImageUrl(event.image)}
+                  alt={event.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gray-300">
+                  <span className="text-gray-500">No Image</span>
                 </div>
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 leading-tight animate-in slide-in-from-bottom-6 duration-700">
-                  {eventData.title}
-                </h1>
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-white/90 animate-in slide-in-from-bottom-8 duration-1000">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-purple-300" />
-                    <span className="text-lg">{eventData.date}</span>
-                  </div>
-                  <div className="hidden sm:block text-white/30">•</div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-purple-300" />
-                    <span className="text-lg">{eventData.time}</span>
-                  </div>
-                  <div className="hidden sm:block text-white/30">•</div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-purple-300" />
-                    <span className="text-lg">{eventData.venue ? `${eventData.venue}, ${eventData.location}` : eventData.location}</span>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-          </div>
 
-          <div className="bg-gray-50 min-h-screen">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-10 pb-20">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* Left Column: Description & Organizer */}
-                <div className="lg:col-span-2 space-y-8">
-                  {/* Description Card */}
-                  <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">About the Event</h2>
-                    <div className="prose prose-purple max-w-none text-gray-600 leading-relaxed whitespace-pre-line">
-                      {eventData.description}
-                    </div>
+            {/* Event Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Main Info */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Title and Categories */}
+                <div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {event.categories &&
+                      event.categories.map((category, index) => (
+                        <InterestTag key={index} text={category} />
+                      ))}
                   </div>
+                  <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+                    {event.title}
+                  </h1>
+                </div>
 
-                  {/* Organizer Card */}
-                  <div className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900">Organizer</h2>
-                    </div>
-                    <div className="flex items-start gap-6">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl flex items-center justify-center shrink-0 border border-purple-200">
-                        <UserIcon className="w-8 h-8 text-purple-600" />
+                {/* Description */}
+                {event.description && (
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-3">
+                      About This Event
+                    </h2>
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                      {event.description}
+                    </p>
+                  </div>
+                )}
+
+                {/* Organizer Info */}
+                {event.organizer && (
+                  <div className="bg-purple-50 rounded-2xl p-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">
+                      Organized By
+                    </h2>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">{eventData.organizer}</h3>
-                        {eventData.organizerBio ? (
-                          <p className="text-gray-600 leading-relaxed">{eventData.organizerBio}</p>
-                        ) : (
-                          <p className="text-gray-400 italic">No bio available for this organizer.</p>
+                        <p className="font-semibold text-gray-900">
+                          {event.organizer}
+                        </p>
+                        {event.organizerBio && (
+                          <p className="text-sm text-gray-600">
+                            {event.organizerBio}
+                          </p>
                         )}
                       </div>
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* Right Column: Ticket & Details */}
-                <div className="lg:col-span-1 space-y-6">
-                  {/* Action Card */}
-                  <div className="bg-white rounded-3xl p-6 shadow-xl border border-purple-100/50 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+              {/* Right Column - Event Details Card */}
+              <div className="lg:col-span-1">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 sticky top-6 space-y-6">
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Event Details
+                  </h2>
 
-                    <div className="flex justify-between items-end mb-6">
+                  {/* Date & Time */}
+                  {event.date && (
+                    <div className="flex items-start gap-3">
+                      <Calendar className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-1">Ticket Price</p>
-                        <div className="flex items-baseline gap-1">
-                          {eventData.price === 0 ? (
-                            <span className="text-3xl font-bold text-gray-900">Free</span>
-                          ) : (
-                            <>
-                              <span className="text-lg font-semibold text-gray-500 relative -top-2">$</span>
-                              <span className="text-4xl font-bold text-gray-900">{eventData.price}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      {eventData.maxParticipants > 0 && (
-                        <div className="text-right">
-                          <div className={`text-sm font-bold ${eventData.maxParticipants - eventData.attendees < 10 ? 'text-orange-500' : 'text-green-600'}`}>
-                            {eventData.maxParticipants - eventData.attendees} spots left
+                        <p className="font-medium text-gray-900">Date & Time</p>
+                        <p className="text-sm text-gray-600">{event.date}</p>
+                        {event.time && (
+                          <p className="text-sm text-gray-600">{event.time}</p>
+                        )}
+                        {event.endDate && (
+                          <div className="mt-1">
+                            <p className="text-sm text-gray-600 font-medium">Ends:</p>
+                            <p className="text-sm text-gray-600">
+                              {event.endDate}
+                            </p>
+                            {event.endTime && (
+                              <p className="text-sm text-gray-600">
+                                {event.endTime}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
+                  )}
 
-                    <Button
-                      text={joining ? "Processing..." : (eventData.price === 0 ? "Register for Free" : "Buy Ticket")}
+                  {/* Location */}
+                  {event.location && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-gray-900">Location</p>
+                        <p className="text-sm text-gray-600">
+                          {event.location}
+                        </p>
+                        {event.venue && (
+                          <p className="text-sm text-gray-500">{event.venue}</p>
+                        )}
+                        {event.mapUrl && (
+                          <a
+                            href={event.mapUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-purple-100 text-purple-700 rounded-xl hover:bg-purple-200 transition-colors font-semibold text-sm w-full justify-center group"
+                          >
+                            <MapPin className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                            View on Map
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Attendees */}
+                  {event.attendees !== undefined && (
+                    <div className="flex items-start gap-3">
+                      <Users className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-gray-900">Attendees</p>
+                        <p className="text-sm text-gray-600">
+                          {event.attendees}{" "}
+                          {event.attendees === 1 ? "person" : "people"}{" "}
+                          attending
+                        </p>
+                        {event.maxParticipants && (
+                          <p className="text-sm text-gray-500">
+                            {event.maxParticipants - event.attendees} spots left
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Duration */}
+                  {event.duration && (
+                    <div className="flex items-start gap-3">
+                      <Clock className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-gray-900">Duration</p>
+                        <p className="text-sm text-gray-600">
+                          {event.duration}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  {event.price !== undefined && (
+                    <div className="flex items-start gap-3">
+                      <DollarSign className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-gray-900">Price</p>
+                        <p className="text-sm text-gray-600">
+                          {event.price === 0 || event.price === "0"
+                            ? "Free"
+                            : `Rs. ${event.price}`}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Divider */}
+                  <div className="border-t border-gray-200"></div>
+
+                  {/* User Actions */}
+                  <div className="space-y-3">
+                    <button
                       onClick={handleJoinEvent}
-                      fullWidth
                       disabled={joining}
-                      className="h-14 text-lg shadow-lg shadow-purple-200"
-                    />
+                      className="w-full px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {joining ? "Processing..." : (
+                        <>
+                          {event.price === 0 || event.price === "0" ? "Register for Free" : "Buy Ticket"}
+                        </>
+                      )}
+                    </button>
 
-                    <p className="text-center text-xs text-gray-400 mt-4">
-                      Secure payment processing via Stripe
-                    </p>
-                  </div>
-
-                  {/* Info Summary Card */}
-                  <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 space-y-5">
-                    <h3 className="font-bold text-gray-900 text-lg">Event Information</h3>
-
-                    <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                        <Calendar className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Date</p>
-                        <p className="text-sm text-gray-600">{eventData.date}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{eventData.time}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center shrink-0">
-                        <MapPin className="w-5 h-5 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Location</p>
-                        <p className="text-sm text-gray-600">{eventData.venue}</p>
-                        {eventData.street && <p className="text-xs text-gray-500">{eventData.street}</p>}
-                        <p className="text-xs text-gray-500">{eventData.location}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center shrink-0">
-                        <Users className="w-5 h-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">Participants</p>
-                        <p className="text-sm text-gray-600">{eventData.attendees} attending</p>
-                      </div>
-                    </div>
-
-                    {eventData.duration && (
-                      <div className="flex items-start gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors">
-                        <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                          <Clock className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">Duration</p>
-                          <p className="text-sm text-gray-600">{eventData.duration}</p>
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href);
+                        alert("Event link copied to clipboard!");
+                      }}
+                      className="w-full px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 flex items-center justify-center gap-2"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Copy Event Link
+                    </button>
                   </div>
                 </div>
               </div>

@@ -26,4 +26,11 @@ export const organizerService = {
             body: { rejection_reason: rejectionReason },
         });
     },
+
+    // Approve request (admin)
+    approveRequest: async (id) => {
+        return await apiRequest(`/organizer-request/${id}/approve`, {
+            method: "POST",
+        });
+    },
 };

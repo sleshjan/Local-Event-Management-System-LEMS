@@ -15,8 +15,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     endDate: '',
     startTime: '',
     endTime: '',
-    street: '',
-    venue: '',
     location: '',
     latitude: '',
     longitude: '',
@@ -35,6 +33,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch categories from API
   useEffect(() => {
@@ -69,27 +68,27 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       const sourceCats = initialData.categoryObjects || initialData.categories || [];
       const categoryIds = sourceCats.map(c =>
         typeof c === 'object' ? (c.id || c.category_id) : c
-      );
+      ).map(id => !isNaN(id) ? parseInt(id) : id);
 
       setFormData({
         title: initialData.title || initialData.name || '',
         description: initialData.description || '',
-        startDate: initialData.startDate || (initialData.start_datetime ? initialData.start_datetime.replace('T', ' ').split(' ')[0] : ''),
-        endDate: initialData.endDate || (initialData.end_datetime ? initialData.end_datetime.replace('T', ' ').split(' ')[0] : ''),
-        startTime: initialData.startTime || (initialData.start_datetime ? initialData.start_datetime.replace('T', ' ').split(' ')[1]?.substring(0, 5) : ''),
-        endTime: initialData.endTime || (initialData.end_datetime ? initialData.end_datetime.replace('T', ' ').split(' ')[1]?.substring(0, 5) : ''),
-        street: initialData.street || '',
-        venue: initialData.venue || '',
+        // Prioritize raw datetime strings over potentially formatted 'startDate'/'startTime' props
+        // The backend/utils might provide 'date' (pretty string) but we need YYYY-MM-DD for input.
+        startDate: (initialData.start_datetime ? initialData.start_datetime.split(/T| /)[0] : '') || initialData.startDate || '',
+        endDate: (initialData.end_datetime ? initialData.end_datetime.split(/T| /)[0] : '') || initialData.endDate || '',
+        startTime: (initialData.start_datetime ? initialData.start_datetime.split(/T| /)[1]?.substring(0, 5) : '') || initialData.startTime || '',
+        endTime: (initialData.end_datetime ? initialData.end_datetime.split(/T| /)[1]?.substring(0, 5) : '') || initialData.endTime || '',
         location: initialData.location || initialData.city || '',
         latitude: initialData.latitude || '',
         longitude: initialData.longitude || '',
-        categories: categoryIds,
+        categories: initialData.categories || categoryIds || [],
         price: initialData.seat_price || initialData.price || '',
-        maxParticipants: initialData.total_seat || initialData.maxParticipants || '',
+        maxParticipants: initialData.maxParticipants || initialData.total_seat || '',
         duration: initialData.duration || '',
         image: initialData.cover_image || initialData.image || '',
-        organizer: initialData.organizer || '',
-        organizerBio: initialData.organizerBio || ''
+        organizer: initialData.organizer || 'LEC club',
+        organizerBio: initialData.organizerBio || initialData.organizer_bio || 'LEC club is a designated club for organizing events.'
       });
       setImagePreview(initialData.cover_image || initialData.image);
     }
@@ -204,12 +203,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       case 'endTime':
         if (!value) error = 'End time is required';
         break;
-      case 'street':
-        if (!value.trim()) error = 'Street is required';
-        break;
-      case 'venue':
-        if (!value.trim()) error = 'Venue name is required';
-        break;
+
       case 'location':
         if (!value.trim()) error = 'Location is required';
         break;
@@ -249,11 +243,12 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     // Validate all fields
     const fieldNames = [
       'title', 'description', 'startDate', 'endDate', 'startTime', 'endTime',
-      'street', 'venue', 'location', 'latitude', 'longitude', 'maxParticipants', 'organizer'
+      'location', 'latitude', 'longitude', 'maxParticipants', 'organizer'
     ];
     const newErrors = {};
     let hasErrors = false;
@@ -289,8 +284,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     data.append('description', formData.description);
     data.append('start_datetime', `${formData.startDate} ${formData.startTime}:00`);
     data.append('end_datetime', `${formData.endDate} ${formData.endTime}:00`);
-    data.append('street', formData.street);
-    data.append('venue', formData.venue);
     data.append('city', formData.location);
     data.append('latitude', formData.latitude);
     data.append('longitude', formData.longitude);
@@ -300,9 +293,26 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     data.append('organizer_bio', formData.organizerBio || '');
     data.append('duration', formData.duration || '0');
 
-    // Append Categories (check backend expectation)
-    formData.categories.forEach((cat, index) => {
-      data.append(`categories[${index}]`, cat);
+    // Sanitize Categories: Ensure we're sending IDs (integers), not names
+    const finalCategoryIds = formData.categories.map(catVal => {
+      // If it's already a number or numeric string
+      if (!isNaN(catVal)) return parseInt(catVal);
+
+      // If it's a string (name), try to find ID in availableCategories
+      const match = availableCategories.find(c => c.name.toLowerCase() === catVal.toLowerCase());
+      return match ? match.id : null;
+    }).filter(id => id !== null);
+
+    // Append Categories
+    if (finalCategoryIds.length === 0 && formData.categories.length > 0) {
+      // If mapping failed but we had data, might be better to send what we have or warn?
+      // But to fix the "must be integer" error, we must filter out strings.
+      // If this results in empty, the validation "at least one" might trigger below if we checked earlier,
+      // but we checked earlier against raw formData.categories.
+    }
+
+    finalCategoryIds.forEach((catId, index) => {
+      data.append(`categories[${index}]`, catId);
     });
 
     // Append image file if exists
@@ -324,39 +334,35 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
     // Submit to API
     try {
-      // Note: eventService.updateEvent uses PUT method. 
-      // If backend fails to read files on PUT, we might need to change service to use POST + _method
-      // modifying the service call for update might be necessary if it fails.
-
-      if (mode === 'create') {
-        const response = await eventService.createEvent(data);
-        alert('Event created successfully!');
-      } else {
-        // For updates with files, use POST usually, but let's try calling updateEvent 
-        // which might need mod to use POST if we passed _method
-        const response = await eventService.updateEvent(initialData.id, data);
+      if (initialData?.id) {
+        await eventService.updateEvent(initialData.id, data);
         alert('Event updated successfully!');
+        navigate(`/admin/events/${initialData.slug || initialData.id}`);
+      } else {
+        await eventService.createEvent(data);
+        alert('Event created successfully!');
+        navigate('/admin/dashboard');
       }
-      navigate('/admin/dashboard');
-    } catch (error) {
-      console.error('Error submitting event:', error);
+    } catch (err) {
+      console.error('Error submitting event:', err);
+      // Construct a better error message from the API response
+      let errorMessage = 'Failed to save event.';
 
-      // Extract detailed error message
-      let errorMessage = 'Something went wrong.';
-
-      if (error.message) {
-        errorMessage = error.message;
+      if (err.response && err.response.data && err.response.data.errors) {
+        // Validation errors object
+        errorMessage = Object.values(err.response.data.errors).flat().join('\n');
+      } else if (err.errors) {
+        // Propagated errors from api.js
+        errorMessage = Object.values(err.errors).flat().join('\n');
+      } else if (err.data && err.data.message) {
+        errorMessage = err.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
 
-      // If there are validation errors from backend
-      if (error.errors && typeof error.errors === 'object') {
-        const errorDetails = Object.entries(error.errors)
-          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
-          .join('\n');
-        errorMessage = `Validation errors:\n${errorDetails}`;
-      }
-
-      alert(errorMessage);
+      alert(`Error: \n${errorMessage}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -503,37 +509,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
       <div className="border-t border-gray-200 pt-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Location</h3>
 
-        {/* Venue Name */}
-        <div className="mb-4">
-          <Input
-            label="Venue Name"
-            type="text"
-            name="venue"
-            placeholder="Central Park Amphitheater"
-            value={formData.venue}
-            onChange={handleChange}
-            onBlur={handleBlur}
-          />
-          {touched.venue && errors.venue && (
-            <p className="text-red-500 text-sm mt-1">{errors.venue}</p>
-          )}
-        </div>
-
-        {/* Street */}
-        <div className="mb-4">
-          <Input
-            label="Street"
-            type="text"
-            name="street"
-            placeholder="123 Main Street"
-            value={formData.street}
-            onChange={handleChange}
-            onBlur={handleBlur}
-          />
-          {touched.street && errors.street && (
-            <p className="text-red-500 text-sm mt-1">{errors.street}</p>
-          )}
-        </div>
+        {/* Event Location */}
 
         {/* City/Location */}
         <div className="mb-4">

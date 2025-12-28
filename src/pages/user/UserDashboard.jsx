@@ -195,8 +195,9 @@ const UserDashboard = () => {
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
               <Button
-                text="Adjust interests"
+                text="Adjust Interests"
                 onClick={() => navigate("/select-interests", { state: { mode: "edit" } })}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all transform hover:scale-105"
               />
               <UserProfileIcon />
             </div>

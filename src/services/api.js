@@ -24,15 +24,21 @@ export const getImageUrl = (path) => {
     if (!cleanPath.startsWith('/')) {
       cleanPath = `/${cleanPath}`;
     }
-    return cleanPath;
-  }
-
-  if (!cleanPath.startsWith('/') && !cleanPath.startsWith('storage')) {
+  } else if (!cleanPath.startsWith('/') && !cleanPath.startsWith('storage')) {
     cleanPath = `/storage/${cleanPath}`;
   } else if (cleanPath.startsWith('/') && !cleanPath.startsWith('/storage')) {
     cleanPath = `/storage${cleanPath}`;
   } else if (!cleanPath.startsWith('/')) {
     cleanPath = `/${cleanPath}`;
+  }
+
+  // Prepend the backend domain (remove /api suffix if present)
+  // If API_BASE_URL is relative (e.g. '/api'), we assume same origin, so cleanPath is fine.
+  // If API_BASE_URL is absolute (e.g. 'http://localhost:8000/api'), we need 'http://localhost:8000'
+  if (API_BASE_URL.startsWith('http')) {
+    const urlObj = new URL(API_BASE_URL);
+    const origin = urlObj.origin; // e.g. http://127.0.0.1:8000
+    return `${origin}${cleanPath}`;
   }
 
   return cleanPath;
@@ -92,6 +98,15 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
     const data = await response.json();
 
     if (!response.ok) {
+      // Log the full error for debugging 500 issues, but skip 422/401 to keep console clean
+      if (response.status !== 422 && response.status !== 401) {
+        console.error("API Error Response:", {
+          status: response.status,
+          url: url,
+          data: data
+        });
+      }
+
       // Create a detailed error object
       const error = new Error(data.message || `HTTP error! status: ${response.status}`);
       error.status = response.status;
@@ -115,26 +130,36 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
 export const parseApiError = (err) => {
   let msg = "An unexpected error occurred. Please try again.";
 
-  if (err.response || err.data) {
-    // If it's a validation error (422)
-    if (err.status === 422 || (err.response && err.response.status === 422)) {
-      const errors = err.errors || (err.data && err.data.errors) || (err.response && err.response.data && err.response.data.errors);
-      if (errors) {
-        // Flatten errors: { email: ["bad"], password: ["bad"] } -> "bad bad"
+  // If we have a structured API error
+  if (err.data || err.response?.data) {
+    const data = err.data || err.response.data;
+    const errors = err.errors || data.errors;
+
+    // 1. Try to extract from 'errors' object (Laravel style)
+    if (errors) {
+      if (typeof errors === 'string') {
+        msg = errors;
+      } else if (typeof errors === 'object') {
+        // Handle {"errors": {"error": "message"}} or {"errors": {"email": ["message"]}}
         const validations = Object.values(errors).flat();
-        if (validations.length > 0) {
+        if (validations.length > 0 && typeof validations[0] === 'string') {
           msg = validations.join(" ");
-        } else {
-          msg = "Please check your input fields.";
+        } else if (errors.error && typeof errors.error === 'string') {
+          msg = errors.error;
+        } else if (data.message) {
+          msg = data.message;
         }
-      } else {
-        msg = err.message || (err.data && err.data.message) || "Validation failed.";
       }
-    } else {
-      // Other API errors
-      msg = err.message || (err.data && err.data.message) || msg;
     }
-  } else if (err.message) {
+    // 2. Try direct 'error' or 'message' keys
+    else if (data.error && typeof data.error === 'string') {
+      msg = data.error;
+    } else if (data.message && typeof data.message === 'string') {
+      msg = data.message;
+    }
+  }
+  // 3. Fallback to Error object message
+  else if (err.message) {
     msg = err.message;
   }
 
@@ -151,3 +176,4 @@ export const parseApiError = (err) => {
 };
 
 export default apiRequest;
+
