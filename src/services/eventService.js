@@ -36,9 +36,10 @@ export const eventService = {
   },
 
   // Register for event (user)
-  registerForEvent: async (eventId) => {
-    return await apiRequest(`/event/${eventId}/register`, {
-      method: 'POST'
+  registerForEvent: async (data) => {
+    return await apiRequest(`/event-registration`, {
+      method: 'POST',
+      body: data
     });
   },
 
@@ -55,5 +56,24 @@ export const eventService = {
     return await apiRequest(`/event/${id}/cancel`, {
       method: 'POST'
     });
-  }
+  },
+  // Get user's registrations
+  getMyRegistrations: async () => {
+    return await apiRequest('/event-registration/my');
+  },
+
+  // Get all registrations (admin)
+  getAllRegistrations: async () => {
+    return await apiRequest('/event-registration');
+  },
+
+  // Get single registration (admin)
+  getRegistration: async (id) => {
+    return await apiRequest(`/event-registration/${id}`);
+  },
+
+  // Generate Ticket (user)
+  generateTicket: async (id) => {
+    return await apiRequest(`/event-registration/${id}/ticket`, { responseType: 'blob' });
+  },
 };

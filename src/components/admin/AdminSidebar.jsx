@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Settings, KeyRound, LogOut, LayoutDashboard, FolderKanban, Users, Inbox } from 'lucide-react';
+import { Settings, KeyRound, LogOut, LayoutDashboard, FolderKanban, Users, Inbox, ClipboardList } from 'lucide-react';
 import Logo from '../common/Logo';
 
 const AdminSidebar = () => {
@@ -29,6 +29,11 @@ const AdminSidebar = () => {
       name: 'Organizer requests',
       path: '/admin/organizer-requests',
       icon: Inbox
+    },
+    {
+      name: 'Registrations',
+      path: '/admin/registrations',
+      icon: ClipboardList
     }
   ];
 
@@ -73,8 +78,8 @@ const AdminSidebar = () => {
               key={item.path}
               onClick={() => navigate(item.path)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${isActive(item.path)
-                  ? 'bg-purple-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
                 }`}
             >
               <Icon className="w-5 h-5" />

@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import InterestTag from "../../components/common/InterestTag";
+import RegistrationModal from "../../components/events/RegistrationModal";
 import { eventService } from "../../services/eventService";
 import { userService } from "../../services/userService";
+import { parseApiError } from "../../services/api";
 import {
   Menu,
   X,
@@ -30,7 +32,11 @@ const EventDetails = () => {
 
   // User specific state
   const [userInterests, setUserInterests] = useState([]);
-  const [joining, setJoining] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  // Registration State
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
 
   // Get event data from navigation state if available
   const locationStateEvent = location.state?.event;
@@ -46,43 +52,70 @@ const EventDetails = () => {
         // User might not be logged in, ignoring
       }
     };
-    loadProfile();
-  }, []);
 
-  useEffect(() => {
-    const fetchEvent = async () => {
-      if (locationStateEvent) {
-        setEvent(normalizeEventData(locationStateEvent));
-        setLoading(false);
-      }
+    const checkRegistration = async () => {
+      // Need event ID to check
+      const currentEventId = slug || locationStateEvent?.id || event?.id;
+      if (!currentEventId) return;
 
-      // Fetch by slug (or id if passed as slug param)
-      const fetchIdentifier = slug || locationStateEvent?.slug || locationStateEvent?.id;
+      try {
+        const registrations = await eventService.getMyRegistrations();
 
-      if (fetchIdentifier && fetchIdentifier !== 'undefined') {
-        try {
-          const response = await eventService.getEvent(fetchIdentifier);
-          const freshData = response.data || response;
-          setEvent(normalizeEventData(freshData));
-          setLoading(false);
-        } catch (error) {
-          if (!locationStateEvent) {
-            console.error("Event not found");
-            // Optional: navigate to dashboard on error?
-            // navigate("/dashboard"); 
-          }
+        let myRegs = [];
+        if (Array.isArray(registrations)) {
+          myRegs = registrations;
+        } else if (registrations && Array.isArray(registrations.data)) {
+          myRegs = registrations.data;
         }
-      } else if (!locationStateEvent) {
-        navigate("/dashboard");
+
+        // Check if any registration matches this event
+        const alreadyJoined = myRegs.some(reg => {
+          // Registration object might have event_id or nested event object
+          const regEventId = reg.event_id || (reg.event && reg.event.id);
+          return parseInt(regEventId) === parseInt(currentEventId);
+        });
+
+        setIsRegistered(alreadyJoined);
+      } catch (e) {
+        console.error("Failed to check registration status", e);
       }
     };
+
+    loadProfile();
+    checkRegistration();
+  }, [slug, event?.id]);
+
+  const fetchEvent = async () => {
+    if (locationStateEvent && !event) {
+      setEvent(normalizeEventData(locationStateEvent));
+      setLoading(false);
+    }
+
+    // Fetch by slug (or id if passed as slug param)
+    const fetchIdentifier = slug || locationStateEvent?.slug || locationStateEvent?.id || event?.id;
+
+    if (fetchIdentifier && fetchIdentifier !== 'undefined') {
+      try {
+        const response = await eventService.getEvent(fetchIdentifier);
+        const freshData = response.data || response;
+        setEvent(normalizeEventData(freshData));
+        setLoading(false);
+      } catch (error) {
+        if (!locationStateEvent) {
+          console.error("Event not found");
+        }
+      }
+    } else if (!locationStateEvent) {
+      navigate("/dashboard");
+    }
+  };
+
+  useEffect(() => {
     fetchEvent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, navigate]);
 
-  const handleJoinEvent = async () => {
-    if (joining) return;
-
+  const handleJoinClick = async () => {
     // Check if user is logged in
     let currentUser = null;
     try {
@@ -100,23 +133,31 @@ const EventDetails = () => {
 
     const userData = currentUser.data || currentUser; // Handle potential structure diffs
 
-    if (!userData.email_verified_at) {
-      alert("Your email must be verified to join events. Please go to your profile settings to verify your email.");
+    const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
+    const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
+
+    if (!isEmailVerified || !isPhoneVerified) {
+      alert("Both Email and Phone must be verified to join events. Please go to your profile settings to verify them.");
       return;
     }
 
-    setJoining(true);
+    setShowRegisterModal(true);
+  };
+
+  const handleRegister = async (registrationData) => {
+    setRegistrationLoading(true);
     try {
-      await eventService.registerForEvent(event.id);
-      alert(`Successfully joined: ${event.title}!`);
-      // Reload data to update attendees count
-      const response = await eventService.getEvent(event.id);
-      const freshData = response.data || response;
-      setEvent(normalizeEventData(freshData));
+      await eventService.registerForEvent(registrationData);
+      alert(`Successfully registered for: ${event.title}!`);
+      setShowRegisterModal(false);
+
+      // Refresh event data to update attendees count
+      await fetchEvent();
+
     } catch (error) {
-      alert(error.message || "Failed to join event");
+      alert(parseApiError(error));
     } finally {
-      setJoining(false);
+      setRegistrationLoading(false);
     }
   };
 
@@ -129,6 +170,17 @@ const EventDetails = () => {
   }
 
   if (!event) return null;
+
+  // Determine button state
+  const isEventEnded = event.status === 'Past' || event.status === 'Completed';
+  const isEventFull = event.maxParticipants && (event.attendees >= event.maxParticipants);
+  const isRegisterDisabled = isEventEnded || isEventFull || isRegistered;
+
+  let buttonText = "Register";
+  if (event.price > 0) buttonText = "Buy Ticket";
+  if (isEventFull) buttonText = "Event Full";
+  if (isEventEnded) buttonText = "Event Ended";
+  if (isRegistered) buttonText = "Already Registered";
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -329,19 +381,22 @@ const EventDetails = () => {
                   )}
 
                   {/* Attendees */}
-                  {event.attendees !== undefined && (
+                  {event.total_seat !== undefined && (
                     <div className="flex items-start gap-3">
                       <Users className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
                       <div>
                         <p className="font-medium text-gray-900">Attendees</p>
                         <p className="text-sm text-gray-600">
-                          {event.attendees}{" "}
-                          {event.attendees === 1 ? "person" : "people"}{" "}
+                          {event.total_seat - event.remaining_seat}{" "}
+                          {(event.total_seat - event.remaining_seat) === 1 ? "person" : "people"}{" "}
                           attending
                         </p>
-                        {event.maxParticipants && (
+                        {(event.remaining_seat !== undefined || (event.maxParticipants && event.maxParticipants > 0)) && (
                           <p className="text-sm text-gray-500">
-                            {event.maxParticipants - event.attendees} spots left
+                            {event.remaining_seat !== undefined
+                              ? `${event.remaining_seat} spots left`
+                              : `${event.maxParticipants - event.attendees} spots left`
+                            }
                           </p>
                         )}
                       </div>
@@ -382,15 +437,15 @@ const EventDetails = () => {
                   {/* User Actions */}
                   <div className="space-y-3">
                     <button
-                      onClick={handleJoinEvent}
-                      disabled={joining}
-                      className="w-full px-6 py-3 bg-purple-600 text-white font-medium rounded-xl hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      onClick={handleJoinClick}
+                      disabled={isRegisterDisabled}
+                      className={`w-full px-6 py-3 font-medium rounded-xl transition-colors flex items-center justify-center gap-2
+                        ${isRegisterDisabled
+                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                          : "bg-purple-600 text-white hover:bg-purple-700"}
+                      `}
                     >
-                      {joining ? "Processing..." : (
-                        <>
-                          {event.price === 0 || event.price === "0" ? "Register for Free" : "Buy Ticket"}
-                        </>
-                      )}
+                      {buttonText}
                     </button>
 
                     <button
@@ -410,6 +465,14 @@ const EventDetails = () => {
           </div>
         </div>
       </div>
+
+      <RegistrationModal
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onConfirm={handleRegister}
+        event={event}
+        loading={registrationLoading}
+      />
     </div>
   );
 };

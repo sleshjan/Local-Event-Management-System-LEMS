@@ -14,6 +14,7 @@ import EditCategory from "./pages/admin/EditCategory";
 import AddCategory from "./pages/admin/AddCategory";
 import ManageUsers from "./pages/admin/ManageUsers";
 import OrganizerRequests from "./pages/admin/OrganizerRequests";
+import ManageRegistrations from "./pages/admin/ManageRegistrations";
 import CreateEvent from './pages/admin/CreateEvent';
 import EditEvent from './pages/admin/EditEvent';
 import ProfilePage from './pages/user/ProfilePage';
@@ -49,6 +50,7 @@ function App() {
         <Route path="/admin/users" element={<ManageUsers />} />
         <Route path="/admin/events/:slug" element={<AdminEventDetails />} />
         <Route path="/admin/organizer-requests" element={<OrganizerRequests />} />
+        <Route path="/admin/registrations" element={<ManageRegistrations />} />
         <Route path="/admin/create-event" element={<CreateEvent />} />
         <Route path="/admin/edit-event/:id" element={<EditEvent />} />
         <Route path="/admin/profile" element={<ProfilePage />} />

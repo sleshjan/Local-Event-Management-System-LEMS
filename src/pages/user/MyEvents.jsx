@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from "../../components/common/Sidebar";
-import EventCard from "../../components/events/EventCard";
 import CancellationModal from "../../components/events/CancellationModal";
-import { Menu, X, Plus } from "lucide-react";
+import { Menu, X, Download, Eye } from "lucide-react";
+import { normalizeEventData } from '../../utils/eventUtils';
 import { userService } from "../../services/userService";
 import { eventService } from "../../services/eventService";
 import { parseApiError } from "../../services/api";
@@ -27,89 +27,64 @@ const MyEvents = () => {
                 const userProfile = await userService.getProfile();
                 setUser(userProfile);
 
-                const response = await eventService.getAllEvents();
+                // Fetch Registrations
+                const response = await eventService.getMyRegistrations();
+                let registrations = [];
 
-                let eventsData = [];
-
-                // Priority 1: Standard API/Laravel paths
                 if (Array.isArray(response)) {
-                    eventsData = response;
+                    registrations = response;
                 } else if (response?.data && Array.isArray(response.data)) {
-                    eventsData = response.data;
+                    // Check if it's a direct array under data
+                    registrations = response.data;
                 } else if (response?.data?.data && Array.isArray(response.data.data)) {
-                    eventsData = response.data.data;
-                }
-                // Priority 2: User specified path
-                else if (response?.data?.other?.data && Array.isArray(response.data.other.data)) {
-                    eventsData = response.data.other.data;
-                }
-                else if (response?.other?.data && Array.isArray(response.other.data)) {
-                    eventsData = response.other.data;
+                    // Handle Laravel pagination structure: response.data.data
+                    registrations = response.data.data;
                 }
 
-                // Fallback: Recursive helper to find any array of objects that look like events
-                if (eventsData.length === 0) {
-                    const findEventsInObject = (obj, depth = 0) => {
-                        if (!obj || depth > 5) return null; // Avoid circular/too deep
+                // Filter out cancelled registrations
+                registrations = registrations.filter(reg => reg.status !== 'cancelled');
 
-                        // If this object itself is an array of events
-                        if (Array.isArray(obj)) {
-                            if (obj.length === 0) return obj; // Empty array might be it
-                            // Check if first item looks like an event (has ID or title/name)
-                            const first = obj[0];
-                            if (first && typeof first === 'object' && (first.id !== undefined || first.title || first.name || first.event_name)) {
-                                return obj;
-                            }
-                            return null;
+                // Map registrations to flat structure for table
+                // Using Promise.all to handle potential async fetching if event data is missing
+                const formattedEvents = await Promise.all(registrations.map(async (reg) => {
+                    let ev = reg.event;
+
+                    // Fallback: If event details are missing but we have an ID, fetch it
+                    if (!ev && reg.event_id) {
+                        try {
+                            const detailResponse = await eventService.getEvent(reg.event_id);
+                            ev = detailResponse.data || detailResponse;
+                        } catch (e) {
+                            console.warn(`Failed to fetch event details for registration ${reg.id}`, e);
+                            ev = {};
                         }
+                    }
 
-                        if (typeof obj === 'object') {
-                            // 1. Check common keys first for efficiency
-                            const commonKeys = ['data', 'events', 'results', 'payload'];
-                            for (const key of commonKeys) {
-                                if (obj[key]) {
-                                    const found = findEventsInObject(obj[key], depth + 1);
-                                    if (found) return found;
-                                }
-                            }
+                    ev = ev || {};
+                    const normEvent = normalizeEventData(ev);
 
-                            // 2. Check all other keys
-                            for (const key in obj) {
-                                if (!commonKeys.includes(key) && Object.prototype.hasOwnProperty.call(obj, key)) {
-                                    const found = findEventsInObject(obj[key], depth + 1);
-                                    if (found) return found;
-                                }
-                            }
+                    // Normalize status to Title Case for consistency (upcoming -> Upcoming)
+                    const rawStatus = ev.status || "upcoming";
+                    const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
 
-                            // 3. Fallback: Treat object values as a list (associative array case)
-                            const values = Object.values(obj);
-                            const meaningfulObjects = values.filter(v =>
-                                v && typeof v === 'object' && (v.id !== undefined || v.title || v.name)
-                            );
-                            if (meaningfulObjects.length > 0 && meaningfulObjects.length > 2) {
-                                return meaningfulObjects;
-                            }
-                        }
+                    return {
+                        // Registration Details
+                        registrationId: reg.id,
+                        paymentStatus: reg.payment_status || 'Pending',
+                        paymentMethod: reg.payment_method || 'Cash',
+                        seatsBooked: reg.seats_booked || 1,
+                        ticketGenerated: reg.ticket_generated || false,
 
-                        return null;
+                        // Event Details
+                        id: ev.id,
+                        title: ev.name || ev.title || "Untitled Event",
+                        slug: ev.slug,
+                        date: normEvent?.date || ev.date || "Date TBA",
+                        time: normEvent?.time || ev.time || "",
+                        location: ev.location || ev.venue || "Location TBA",
+                        status: status,
+                        price: ev.seat_price || ev.price || 0,
                     };
-
-                    const found = findEventsInObject(response);
-                    if (found) eventsData = found;
-                }
-
-                const formattedEvents = eventsData.map(ev => ({
-                    ...ev,
-                    id: ev.id,
-                    title: ev.name || ev.title || "Untitled Event",
-                    date: ev.date || "Date TBA",
-                    location: ev.location || ev.venue || "Location TBA",
-                    image: ev.image || ev.image_url || ev.cover_image,
-                    status: ev.status || "Upcoming", // Default to Upcoming if missing
-                    categories: Array.isArray(ev.categories)
-                        ? ev.categories.map(c => (typeof c === 'object' ? c.name : c))
-                        : (typeof ev.category === 'string' ? [ev.category] : []),
-                    attendees: ev.attendees_count || ev.attendees || 0
                 }));
 
                 setEvents(formattedEvents);
@@ -122,8 +97,42 @@ const MyEvents = () => {
         fetchData();
     }, []);
 
-    const handleCancelClick = (eventId) => {
-        setSelectedEventId(eventId);
+    const handleViewTicket = async (regId) => {
+        try {
+            const blob = await eventService.generateTicket(regId);
+            const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+            window.open(url, '_blank');
+
+            // Optional: Mark as generated if we want to show it's been accessed, 
+            // but we won't disable the button.
+            setEvents(prev => prev.map(ev =>
+                ev.registrationId === regId ? { ...ev, ticketGenerated: true } : ev
+            ));
+        } catch (error) {
+            console.error("View ticket failed:", error);
+            alert("Failed to view ticket. " + (error.message || "Please try again."));
+        }
+    };
+
+    const handleDownloadTicket = async (regId) => {
+        try {
+            const blob = await eventService.generateTicket(regId);
+            const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `ticket-${regId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Download ticket failed:", error);
+            alert("Failed to download ticket. " + (error.message || "Please try again."));
+        }
+    };
+
+    const handleCancelClick = (regId) => {
+        setSelectedEventId(regId);
         setShowCancelModal(true);
     };
 
@@ -135,8 +144,8 @@ const MyEvents = () => {
             await eventService.cancelRegistration(selectedEventId, data);
             alert("Registration cancelled successfully.");
 
-            // Remove the cancelled event from the list
-            setEvents(prevEvents => prevEvents.filter(e => e.id !== selectedEventId));
+            // Remove the cancelled event from the list (using registrationId)
+            setEvents(prevEvents => prevEvents.filter(e => e.registrationId !== selectedEventId));
             setShowCancelModal(false);
             setSelectedEventId(null);
         } catch (error) {
@@ -144,6 +153,37 @@ const MyEvents = () => {
         } finally {
             setCancellationLoading(false);
         }
+    };
+
+    const getStatusBadge = (status) => {
+        const styles = {
+            'Upcoming': 'bg-blue-100 text-blue-800',
+            'Active': 'bg-green-100 text-green-800',
+            'Past': 'bg-gray-100 text-gray-800',
+            'Completed': 'bg-gray-100 text-gray-800',
+            'Cancelled': 'bg-red-100 text-red-800'
+        };
+        return (
+            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
+                {status}
+            </span>
+        );
+    };
+
+    const getPaymentBadge = (status) => {
+        const styles = {
+            'paid': 'bg-green-100 text-green-800',
+            'pending': 'bg-yellow-100 text-yellow-800',
+            'failed': 'bg-red-100 text-red-800',
+            'refunded': 'bg-purple-100 text-purple-800'
+        };
+        // normalizing status to lowercase just in case
+        const s = (status || 'pending').toLowerCase();
+        return (
+            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${styles[s] || styles['pending']}`}>
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+            </span>
+        );
     };
 
     return (
@@ -191,50 +231,121 @@ const MyEvents = () => {
                             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">My Events</h1>
                         </div>
                         <div className="flex items-center gap-3">
-                            {user?.role === 'organizer' && (
-                                <button
-                                    onClick={() => navigate('/user/create-event')}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl flex items-center gap-2 transition-colors shadow-sm hover:shadow-md transform hover:scale-105"
-                                >
-                                    <Plus className="w-5 h-5" /> Create Event
-                                </button>
-                            )}
                             <UserProfileIcon />
                         </div>
                     </div>
                 </div>
 
-                {/* Content */}
                 <div className="flex-1 overflow-y-auto">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+                    <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                         {loading ? (
                             <div className="text-center py-10 text-gray-500">Loading events...</div>
                         ) : events.length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {events.map((event, index) => (
-                                    <div key={event.id || index} className="flex flex-col h-full relative group">
-                                        <EventCard event={event} role='user' />
-
-                                        {/* Cancellation Button for Upcoming Events */}
-                                        {event.status === 'Upcoming' && (
-                                            <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation(); // Prevent card click
-                                                        handleCancelClick(event.id);
-                                                    }}
-                                                    className="bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-md transition-transform transform hover:scale-105"
-                                                >
-                                                    Cancel Registration
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Event
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Payment
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Seats
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Amount
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                                <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Ticket
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {events.map((event) => (
+                                                <tr key={event.registrationId} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-sm font-medium text-gray-900">{event.title}</span>
+                                                            <span className="text-xs text-gray-500">{event.date} {event.time && `• ${event.time}`}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {getStatusBadge(event.status)}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex flex-col gap-1">
+                                                            {getPaymentBadge(event.paymentStatus)}
+                                                            <span className="text-xs text-gray-400 capitalize">{event.paymentMethod}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {event.seatsBooked}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        Rs. {event.price * event.seatsBooked}
+                                                    </td>
+                                                    <td className="px-5 py-5 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex justify-evenly gap-3">
+                                                            <button
+                                                                onClick={() => navigate(`/event/${event.slug || event.id}`, { state: { event: event } })}
+                                                                className="text-purple-600 hover:text-purple-900"
+                                                            >
+                                                                View
+                                                            </button>
+                                                            {event.status === 'Upcoming' && (
+                                                                <button
+                                                                    onClick={() => handleCancelClick(event.registrationId)}
+                                                                    className="text-red-600 hover:text-red-900"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button
+                                                                onClick={() => handleViewTicket(event.registrationId)}
+                                                                disabled={event.status === 'Cancelled'}
+                                                                title="View Ticket"
+                                                                className={`p-2 rounded-full transition-colors ${event.status === 'Cancelled'
+                                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                                    : 'text-indigo-600 hover:bg-indigo-50'
+                                                                    }`}
+                                                            >
+                                                                <Eye className="w-5 h-5" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDownloadTicket(event.registrationId)}
+                                                                disabled={event.status === 'Cancelled'}
+                                                                title="Download Ticket"
+                                                                className={`p-2 rounded-full transition-colors ${event.status === 'Cancelled'
+                                                                    ? 'text-gray-300 cursor-not-allowed'
+                                                                    : 'text-green-600 hover:bg-green-50'
+                                                                    }`}
+                                                            >
+                                                                <Download className="w-5 h-5" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         ) : (
                             <div className="text-center py-10 text-gray-500">
-                                No events found.
+                                No registered events found.
                             </div>
                         )}
                     </div>

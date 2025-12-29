@@ -1,5 +1,4 @@
 // Base configuration
-// Base configuration
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 export const FILE_BASE_URL = '';
 
@@ -95,6 +94,14 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
       return null;
     }
 
+    // Handle Blob responses
+    if (config.responseType === 'blob' || customConfig.responseType === 'blob') {
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      return await response.blob();
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -118,6 +125,7 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
     return data;
 
   } catch (error) {
+    // console.error('API Request Error:', error);
     throw error;
   }
 };
@@ -176,4 +184,3 @@ export const parseApiError = (err) => {
 };
 
 export default apiRequest;
-
