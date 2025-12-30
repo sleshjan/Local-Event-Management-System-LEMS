@@ -22,6 +22,9 @@ const UserDashboard = () => {
 
   useEffect(() => {
     const loadProfile = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
       try {
         const profile = await userService.getProfile();
         // Assuming profile.interests is array of objects or strings
@@ -194,12 +197,29 @@ const UserDashboard = () => {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              <Button
-                text="Adjust Interests"
-                onClick={() => navigate("/select-interests", { state: { mode: "edit" } })}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all transform hover:scale-105"
-              />
-              <UserProfileIcon />
+              {localStorage.getItem('token') ? (
+                <>
+                  <Button
+                    text="Adjust Interests"
+                    onClick={() => navigate("/select-interests", { state: { mode: "edit" } })}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-6 rounded-xl shadow-md transition-all transform hover:scale-105 hidden sm:block"
+                  />
+                  <UserProfileIcon />
+                </>
+              ) : (
+                <>
+                  <Button
+                    text="Login"
+                    onClick={() => navigate("/login")}
+                    className="bg-white text-purple-600 border border-purple-200 hover:bg-purple-50 font-medium py-2 px-4 rounded-xl transition-all"
+                  />
+                  <Button
+                    text="Register"
+                    onClick={() => navigate("/register")}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl shadow-md transition-all"
+                  />
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -210,14 +230,16 @@ const UserDashboard = () => {
 
 
             {/* Tailored Message */}
-            <p className="text-sm text-gray-600 mb-6">
-              Tailored by your interests
-            </p>
+            {localStorage.getItem('token') && (
+              <p className="text-sm text-gray-600 mb-6">
+                Tailored by your interests
+              </p>
+            )}
 
             {/* Section Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-                Recommended for you
+                {localStorage.getItem('token') ? "Recommended for you" : "All Events"}
               </h2>
               <button className="text-sm font-medium text-purple-600 hover:text-purple-700">
                 See all

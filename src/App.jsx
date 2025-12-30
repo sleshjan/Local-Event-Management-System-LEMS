@@ -32,13 +32,13 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/select-interests" element={<SelectInterests />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/password-reset-confirm" element={<ResetPasswordConfirm />} />
+        <Route path="/reset-password" element={<ResetPasswordConfirm />} />
 
         {/* User routes */}
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/my-events" element={<MyEvents />} />
         <Route path="/user/create-event" element={<UserCreateEvent />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/change-password" element={<ResetPassword />} />
         <Route path="/become-organizer" element={<BecomeOrganizer />} />
         <Route path="/event/:slug" element={<EventDetails />} />
 

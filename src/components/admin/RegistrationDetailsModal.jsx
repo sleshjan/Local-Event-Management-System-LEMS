@@ -75,15 +75,12 @@ const RegistrationDetailsModal = ({ isOpen, onClose, registration }) => {
                         <h4 className="flex items-center gap-2 font-semibold text-gray-900 border-b pb-2">
                             <CreditCard className="w-5 h-5 text-purple-600" /> Payment & Seats
                         </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Seats Booked</p>
                                 <p className="font-bold text-lg text-gray-900">{seatsBooked}</p>
                             </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                                <p className="font-bold text-lg text-gray-900">Rs. {amount}</p>
-                            </div>
+
                             <div>
                                 <p className="text-xs text-gray-500 mb-1">Payment Method</p>
                                 <p className="font-medium text-gray-900 capitalize">{paymentMethod}</p>

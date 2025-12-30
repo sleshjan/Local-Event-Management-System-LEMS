@@ -4,30 +4,34 @@ import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Logo from "../../components/common/Logo";
 import { authService } from "../../services/authService";
+import { parseApiError } from "../../services/api";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
+    setSuccess("");
 
     if (!email.trim()) {
-      setMessage("Please enter a valid email address.");
+      setError("Please enter a valid email address.");
       return;
     }
 
+    setLoading(true);
+
     try {
       const response = await authService.forgotPassword(email);
-      setMessage(response.status || "A password reset link has been sent to your email.");
-      setError(""); // Clear any previous errors on success
+      setSuccess(response.status || "A password reset link has been sent to your email.");
+      setEmail(""); // Optional: clear email after successful send
     } catch (err) {
-      // Assuming parseApiError is a utility function that needs to be imported or defined
-      // For now, we'll use a placeholder or assume it's handled elsewhere if not provided.
-      // If parseApiError is not defined, this will cause a runtime error.
-      // The instruction was to remove console logs, and the provided edit included setError(parseApiError(error)).
-      setError(err.message || "Something went wrong. Please try again.");
-      setMessage(""); // Clear any previous success message on error
+      setError(parseApiError(err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,16 +67,32 @@ const ForgotPassword = () => {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (error) setError(""); // Clear error on type
+              }}
             />
           </div>
 
-          {/* Reused Button component */}
-          <Button text="Send Reset Link" type="submit" fullWidth />
-
-          {message && (
-            <p className="text-sm text-center text-green-600">{message}</p>
+          {/* Feedback Messages */}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              {error}
+            </div>
           )}
+          {success && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {success}
+            </div>
+          )}
+
+          {/* Reused Button component */}
+          <Button
+            text={loading ? "Sending..." : "Send Reset Link"}
+            type="submit"
+            fullWidth
+            disabled={loading}
+          />
         </form>
 
         {/* Link back to Login */}

@@ -94,7 +94,9 @@ export const normalizeEventData = (data) => {
             : (typeof event.category === 'string' ? [event.category] : []),
 
         // Stats & Capacity
-        attendees: event.attendees_count || event.attendees || 0,
+        attendees: (event.total_seat != null && event.remaining_seat != null)
+            ? (parseInt(event.total_seat, 10) - parseInt(event.remaining_seat, 10))
+            : (event.attendees_count || event.attendees || 0),
         maxParticipants: event.total_seat || event.maxParticipants || 0,
 
         // Price

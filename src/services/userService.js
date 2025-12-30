@@ -43,10 +43,18 @@ export const userService = {
         const formData = new FormData();
 
         // Append text fields
+        // Append text fields
         if (userData.name) formData.append('name', userData.name);
-        if (userData.province) formData.append('province', userData.province);
-        if (userData.district) formData.append('district', userData.district);
-        if (userData.municipality_id) formData.append('municipality_id', userData.municipality_id);
+
+        // Handle address fields - check top level first, then nested address object
+        const province = userData.province || userData.address?.province?.name || userData.address?.province;
+        const district = userData.district || userData.address?.district?.name || userData.address?.district;
+        const municipalityId = userData.municipality_id || userData.address?.municipality?.id;
+
+        if (province) formData.append('province', province);
+        if (district) formData.append('district', district);
+        if (municipalityId) formData.append('municipality_id', municipalityId);
+
         if (userData.ward_no) formData.append('ward_no', userData.ward_no);
         if (userData.street) formData.append('street', userData.street);
         if (userData.phone_number) {

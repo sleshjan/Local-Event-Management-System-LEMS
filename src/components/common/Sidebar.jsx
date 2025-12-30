@@ -19,7 +19,7 @@ const Sidebar = ({ userInterests = [] }) => {
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
-    { name: "My Events", path: "/my-events", icon: FolderKanban },
+    ...(localStorage.getItem('token') ? [{ name: "My Events", path: "/my-events", icon: FolderKanban }] : []),
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -38,7 +38,7 @@ const Sidebar = ({ userInterests = [] }) => {
 
   const handleResetPassword = () => {
     setIsDropdownOpen(false);
-    navigate("/reset-password");
+    navigate("/change-password");
   };
 
   const handleBeOrganizer = () => {
@@ -97,50 +97,52 @@ const Sidebar = ({ userInterests = [] }) => {
         )}
       </nav>
 
-      {/* Settings Button at Bottom */}
-      <div className="p-4 border-t border-gray-200 relative" ref={dropdownRef}>
-        <button
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-          className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-xl transition-colors font-medium"
-        >
-          <Settings className="w-5 h-5" />
-          <span>Settings</span>
-        </button>
+      {/* Settings Button at Bottom - Only for logged in users */}
+      {localStorage.getItem('token') && (
+        <div className="p-4 border-t border-gray-200 relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-xl transition-colors font-medium"
+          >
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
+          </button>
 
-        {/* Dropdown Menu */}
-        {isDropdownOpen && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            {/* Reset Password */}
-            <button
-              onClick={handleResetPassword}
-              className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left"
-            >
-              <KeyRound className="w-5 h-5" />
-              <span className="text-sm font-medium">Reset Password</span>
-            </button>
-
-            {/* Be an Organizer - Hide if already an organizer */}
-            {JSON.parse(localStorage.getItem("user") || "{}")?.role !== "organizer" && (
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+              {/* Reset Password */}
               <button
-                onClick={handleBeOrganizer}
-                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left border-t border-gray-100"
+                onClick={handleResetPassword}
+                className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left"
               >
-                <User className="w-5 h-5" />
-                <span className="text-sm font-medium">Be an Organizer</span>
+                <KeyRound className="w-5 h-5" />
+                <span className="text-sm font-medium">Reset Password</span>
               </button>
-            )}
 
-            {/* Logout */}
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-sm font-medium">Logout</span>
-            </button>
-          </div>
-        )}
-      </div>
+              {/* Be an Organizer - Hide if already an organizer */}
+              {JSON.parse(localStorage.getItem("user") || "{}")?.role !== "organizer" && (
+                <button
+                  onClick={handleBeOrganizer}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors text-left border-t border-gray-100"
+                >
+                  <User className="w-5 h-5" />
+                  <span className="text-sm font-medium">Be an Organizer</span>
+                </button>
+              )}
+
+              {/* Logout */}
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 transition-colors text-left border-t border-gray-100"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="text-sm font-medium">Logout</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

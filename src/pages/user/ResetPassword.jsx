@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
+import AdminSidebar from "../../components/admin/AdminSidebar";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Eye, EyeOff } from "lucide-react";
 import { authService } from "../../services/authService";
+import { parseApiError } from "../../services/api";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -14,19 +16,43 @@ const ResetPassword = () => {
     newPassword: "",
     confirmPassword: "",
   });
+
+  // UI State
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [apiError, setApiError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Mock user interests (in real app, get from context/state)
+  // Password Visibility State
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   // Get user interests from localStorage
   const [userInterests, setUserInterests] = useState([]);
 
   useEffect(() => {
+    // Check for admin role
+    const userString = localStorage.getItem('user');
+    if (userString) {
+      try {
+        const user = JSON.parse(userString);
+        // Robust check for admin role in case of nested data structures
+        const role = user?.role || user?.data?.role || '';
+        setIsAdmin(role === 'admin' || user?.is_admin === 1 || user?.is_admin === true);
+      } catch (e) {
+        console.error("Error parsing user data", e);
+      }
+    }
+
     const storedInterests = localStorage.getItem("userInterests");
     if (storedInterests) {
       setUserInterests(JSON.parse(storedInterests));
     }
   }, []);
+
   const validatePassword = (password) => {
     return password.length >= 8;
   };
@@ -92,6 +118,8 @@ const ResetPassword = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setApiError("");
+    setSuccessMessage("");
 
     // Validate all fields
     const oldPasswordError = validateField("oldPassword", formData.oldPassword);
@@ -113,13 +141,15 @@ const ResetPassword = () => {
       return;
     }
 
+    setLoading(true);
+
     try {
       await authService.updatePassword({
         old_password: formData.oldPassword,
         password: formData.newPassword,
         password_confirmation: formData.confirmPassword
       });
-      setSuccess(true);
+      setSuccessMessage("Password updated successfully!");
       setFormData({
         oldPassword: "",
         newPassword: "",
@@ -127,17 +157,51 @@ const ResetPassword = () => {
       });
       setErrors({});
       setTouched({});
-      navigate("/dashboard");
+
+      // Navigate after a delay to let user see success message
+      setTimeout(() => {
+        navigate(isAdmin ? "/admin/dashboard" : "/dashboard");
+      }, 2000);
     } catch (err) {
-      setError(err.message || "Failed to update password");
+      setApiError(parseApiError(err));
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Helper to render password input with toggle
+  const renderPasswordInput = (label, name, value, showState, setShowState) => (
+    <div className="relative">
+      <Input
+        label={label}
+        type={showState ? "text" : "password"}
+        name={name}
+        placeholder={`Enter ${label.toLowerCase()}`}
+        value={value}
+        onChange={handleChange}
+        onBlur={handleBlur}
+      />
+      <button
+        type="button"
+        onClick={() => setShowState(!showState)}
+        className="absolute right-4 top-[38px] text-gray-500 hover:text-gray-700"
+        tabIndex="-1" // Prevent tab focus
+      >
+        {showState ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+      </button>
+      {touched[name] && errors[name] && (
+        <p className="text-red-500 text-sm mt-1">
+          {errors[name]}
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
-        <Sidebar userInterests={userInterests} />
+        {isAdmin ? <AdminSidebar /> : <Sidebar userInterests={userInterests} />}
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -157,7 +221,7 @@ const ResetPassword = () => {
               </button>
             </div>
             <div className="flex-1 overflow-hidden">
-              <Sidebar userInterests={userInterests} />
+              {isAdmin ? <AdminSidebar /> : <Sidebar userInterests={userInterests} />}
             </div>
           </div>
         </div>
@@ -185,71 +249,40 @@ const ResetPassword = () => {
 
             {/* Change Password Card */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-200 p-6 sm:p-8 lg:py-5 lg:px-10 max-w-2xl">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">
                 Update your password
               </h2>
 
+              {/* Feedback Messages */}
+              {apiError && (
+                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                  {apiError}
+                </div>
+              )}
+              {successMessage && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+                  {successMessage}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Old Password */}
-                <div>
-                  <Input
-                    label="Old Password"
-                    type="password"
-                    name="oldPassword"
-                    placeholder="Enter current password"
-                    value={formData.oldPassword}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.oldPassword && errors.oldPassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.oldPassword}
-                    </p>
-                  )}
-                </div>
+                {renderPasswordInput("Old Password", "oldPassword", formData.oldPassword, showOldPassword, setShowOldPassword)}
 
                 {/* New Password */}
-                <div>
-                  <Input
-                    label="New Password"
-                    type="password"
-                    name="newPassword"
-                    placeholder="Enter new password"
-                    value={formData.newPassword}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.newPassword && errors.newPassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.newPassword}
-                    </p>
-                  )}
-                </div>
+                {renderPasswordInput("New Password", "newPassword", formData.newPassword, showNewPassword, setShowNewPassword)}
 
                 {/* Confirm New Password */}
-                <div>
-                  <Input
-                    label="Confirm New Password"
-                    type="password"
-                    name="confirmPassword"
-                    placeholder="Re-enter new password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.confirmPassword && errors.confirmPassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.confirmPassword}
-                    </p>
-                  )}
-                </div>
+                {renderPasswordInput("Confirm New Password", "confirmPassword", formData.confirmPassword, showConfirmPassword, setShowConfirmPassword)}
 
                 {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-8">
                   {/* Cancel Button */}
                   <button
                     type="button"
-                    onClick={() => navigate("/dashboard")}
+                    onClick={() => {
+                      navigate(isAdmin ? "/admin/dashboard" : "/dashboard");
+                    }}
                     className="w-full sm:w-1/2 px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
                   >
                     Cancel
@@ -257,7 +290,12 @@ const ResetPassword = () => {
 
                   {/* Update Password Button */}
                   <div className="w-full sm:w-1/2">
-                    <Button text="Update Password" type="submit" fullWidth />
+                    <Button
+                      text={loading ? "Updating..." : "Update Password"}
+                      type="submit"
+                      fullWidth
+                      disabled={loading}
+                    />
                   </div>
                 </div>
 

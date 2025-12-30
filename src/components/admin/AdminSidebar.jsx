@@ -53,7 +53,7 @@ const AdminSidebar = () => {
 
   const handleResetPassword = () => {
     setIsDropdownOpen(false);
-    navigate('/reset-password');
+    navigate('/change-password');
   };
 
   const handleLogout = () => {

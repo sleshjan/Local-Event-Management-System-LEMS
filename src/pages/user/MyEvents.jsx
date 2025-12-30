@@ -23,6 +23,12 @@ const MyEvents = () => {
 
     useEffect(() => {
         const fetchData = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                navigate('/login');
+                return;
+            }
+
             try {
                 const userProfile = await userService.getProfile();
                 setUser(userProfile);
@@ -258,9 +264,6 @@ const MyEvents = () => {
                                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Seats
                                                 </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                    Amount
-                                                </th>
                                                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                     Actions
                                                 </th>
@@ -289,9 +292,6 @@ const MyEvents = () => {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {event.seatsBooked}
-                                                    </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        Rs. {event.price * event.seatsBooked}
                                                     </td>
                                                     <td className="px-5 py-5 whitespace-nowrap text-right text-sm font-medium">
                                                         <div className="flex justify-evenly gap-3">
