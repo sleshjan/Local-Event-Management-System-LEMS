@@ -6,6 +6,8 @@ import { userService } from '../../services/userService';
 import { getImageUrl, parseApiError } from '../../services/api';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import Sidebar from '../../components/common/Sidebar';
+import { locationService } from '../../services/locationService';
+import { Loader2 } from 'lucide-react';
 
 const ProfilePage = () => {
     const navigate = useNavigate();
@@ -26,6 +28,73 @@ const ProfilePage = () => {
         profile_picture: null
     });
     const [previewImage, setPreviewImage] = useState(null);
+
+    // Location State
+    const [locationData, setLocationData] = useState([]);
+    const [fetchingLocations, setFetchingLocations] = useState(false);
+    const [districts, setDistricts] = useState([]);
+    const [municipalities, setMunicipalities] = useState([]);
+    const [wards, setWards] = useState([]);
+
+    // Fetch Location Data on Mount
+    useEffect(() => {
+        const fetchAddresses = async () => {
+            try {
+                setFetchingLocations(true);
+                const data = await locationService.getAddresses();
+                setLocationData(data);
+            } catch (err) {
+                console.error("Failed to load location data", err);
+            } finally {
+                setFetchingLocations(false);
+            }
+        };
+        fetchAddresses();
+    }, []);
+
+    // Handle Province Change
+    useEffect(() => {
+        if (formData.province) {
+            const selectedProvince = locationData.find(p => p.id == formData.province);
+            if (selectedProvince && selectedProvince.districts) {
+                setDistricts(selectedProvince.districts);
+            } else {
+                setDistricts([]);
+            }
+        } else {
+            setDistricts([]);
+        }
+    }, [formData.province, locationData]);
+
+    // Handle District Change
+    useEffect(() => {
+        if (formData.district) {
+            const selectedDistrict = districts.find(d => d.id == formData.district);
+            if (selectedDistrict && selectedDistrict.municipalities) {
+                setMunicipalities(selectedDistrict.municipalities);
+            } else {
+                setMunicipalities([]);
+            }
+        } else {
+            setMunicipalities([]);
+        }
+    }, [formData.district, districts]);
+
+    // Handle Municipality Change
+    useEffect(() => {
+        if (formData.municipality) {
+            const selectedMunicipality = municipalities.find(m => m.id == formData.municipality);
+            if (selectedMunicipality && selectedMunicipality.no_of_ward) {
+                const wardCount = parseInt(selectedMunicipality.no_of_ward, 10);
+                const wardArray = Array.from({ length: wardCount }, (_, i) => i + 1);
+                setWards(wardArray);
+            } else {
+                setWards([]);
+            }
+        } else {
+            setWards([]);
+        }
+    }, [formData.municipality, municipalities]);
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -53,9 +122,10 @@ const ProfilePage = () => {
                 setUser(profileData);
                 setFormData({
                     name: profileData.name || '',
+                    province: profileData.address?.province?.id || '',
+                    district: profileData.address?.district?.id || '',
+                    municipality: profileData.address?.municipality?.id || '',
                     municipality_id: profileData.address?.municipality?.id || profileData.municipality_id || '',
-                    province: profileData.address?.province?.name || profileData.province || '',
-                    district: profileData.address?.district?.name || profileData.district || '',
                     ward_no: profileData.ward_no || '',
                     street: profileData.street || '',
                     phone_number: profileData.phone || profileData.phone_number || profileData.phone_no || '',
@@ -85,7 +155,26 @@ const ProfilePage = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newData = { ...prev, [name]: value };
+
+            // Handle Cascading Resets
+            if (name === 'province') {
+                newData.district = '';
+                newData.municipality = '';
+                newData.municipality_id = '';
+                newData.ward_no = '';
+            } else if (name === 'district') {
+                newData.municipality = '';
+                newData.municipality_id = '';
+                newData.ward_no = '';
+            } else if (name === 'municipality') {
+                newData.municipality_id = value; // Sync main ID
+                newData.ward_no = '';
+            }
+
+            return newData;
+        });
     };
 
     const handleImageChange = (e) => {
@@ -242,40 +331,6 @@ const ProfilePage = () => {
                                                     disabled
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                                                 />
-                                                <button
-                                                    type="button"
-                                                    disabled={!!user?.email_verified_at || !!user?.is_email_verified}
-                                                    onClick={async () => {
-                                                        try {
-                                                            await authService.resendVerification(user.email);
-                                                            alert("Verification email sent!");
-                                                            // Optimistically update if successful
-                                                            const now = new Date().toISOString();
-                                                            const updated = { ...user, email_verified_at: now, is_email_verified: true };
-                                                            setUser(updated);
-                                                            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                                                            localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
-                                                        } catch (err) {
-                                                            const errorMsg = err.data?.message || err.message || "";
-                                                            if (err.status === 422 && errorMsg.toLowerCase().includes("already verified")) {
-                                                                alert("Email is already verified.");
-                                                                const now = new Date().toISOString();
-                                                                const updated = { ...user, email_verified_at: now, is_email_verified: true };
-                                                                setUser(updated);
-                                                                const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                                                                localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
-                                                            } else {
-                                                                alert(parseApiError(err));
-                                                            }
-                                                        }
-                                                    }}
-                                                    className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.email_verified_at || user?.is_email_verified
-                                                        ? "bg-green-100 text-green-700 cursor-not-allowed border border-green-200"
-                                                        : "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                                                        }`}
-                                                >
-                                                    {user?.email_verified_at || user?.is_email_verified ? "Email Verified" : "Verify Email"}
-                                                </button>
                                             </div>
                                         </div>
 
@@ -289,99 +344,72 @@ const ProfilePage = () => {
                                                     value={formData.phone_number || user?.phone_number || ''}
                                                     onChange={handleChange}
                                                     placeholder="Enter phone number"
-                                                    disabled={!!user?.phone_verified_at || !!user?.is_phone_verified}
-                                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${(user?.phone_verified_at || user?.is_phone_verified) ? 'bg-gray-100 cursor-not-allowed text-gray-500' : ''}`}
+                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                                 />
-                                                {(formData.phone_number || user?.phone_number) && (
-                                                    <button
-                                                        type="button"
-                                                        disabled={!!user?.phone_verified_at || !!user?.is_phone_verified}
-                                                        onClick={async () => {
-                                                            const phoneToVerify = formData.phone_number || user?.phone_number || '';
-                                                            const phoneRegex = /^\d{10}$/;
-
-                                                            if (!phoneToVerify) {
-                                                                alert("Please enter a phone number first.");
-                                                                return;
-                                                            }
-
-                                                            if (!phoneRegex.test(phoneToVerify)) {
-                                                                alert("Phone number must be exactly 10 digits and contain only numbers.");
-                                                                return;
-                                                            }
-
-                                                            try {
-                                                                await authService.verifyPhone(phoneToVerify);
-                                                                alert("Phone verified successfully!");
-                                                                // Update state and localStorage immediately
-                                                                const now = new Date().toISOString();
-                                                                const updated = { ...user, phone_verified_at: now, is_phone_verified: true };
-                                                                setUser(updated);
-                                                                const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                                                                localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
-                                                            } catch (err) {
-                                                                const errorMsg = err.data?.message || err.message || "";
-                                                                if (err.status === 422 && errorMsg.toLowerCase().includes("already verified")) {
-                                                                    alert("Phone number is already verified.");
-                                                                    const now = new Date().toISOString();
-                                                                    const updated = { ...user, phone_verified_at: now, is_phone_verified: true };
-                                                                    setUser(updated);
-                                                                    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-                                                                    localStorage.setItem('user', JSON.stringify({ ...currentUser, ...updated }));
-                                                                } else {
-                                                                    alert(parseApiError(err));
-                                                                }
-                                                            }
-                                                        }}
-                                                        className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-colors ${user?.phone_verified_at || user?.is_phone_verified
-                                                            ? "bg-green-100 text-green-700 cursor-not-allowed border border-green-200"
-                                                            : "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                                                            }`}
-                                                    >
-                                                        {user?.phone_verified_at || user?.is_phone_verified ? "Phone Verified" : "Verify Phone"}
-                                                    </button>
-                                                )}
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
-                                            <input
-                                                type="text"
+                                            <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1">
+                                                Province
+                                                {fetchingLocations && <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />}
+                                            </label>
+                                            <select
                                                 name="province"
-                                                value={formData.province || ''}
+                                                value={formData.province}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            />
+                                                disabled={fetchingLocations}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                                            >
+                                                <option value="">Select Province</option>
+                                                {locationData.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 name="district"
-                                                value={formData.district || ''}
+                                                value={formData.district}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            />
+                                                disabled={!formData.province}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                                            >
+                                                <option value="">Select District</option>
+                                                {districts.map(d => (
+                                                    <option key={d.id} value={d.id}>{d.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Municipality ID</label>
-                                            <input
-                                                type="text"
-                                                name="municipality_id"
-                                                value={formData.municipality_id}
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Municipality</label>
+                                            <select
+                                                name="municipality"
+                                                value={formData.municipality}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            />
+                                                disabled={!formData.district}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                                            >
+                                                <option value="">Select Municipality</option>
+                                                {municipalities.map(m => (
+                                                    <option key={m.id} value={m.id}>{m.name}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Ward No</label>
-                                            <input
-                                                type="text"
+                                            <select
                                                 name="ward_no"
                                                 value={formData.ward_no}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            />
+                                                disabled={!formData.municipality}
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                                            >
+                                                <option value="">Select Ward</option>
+                                                {wards.map(w => (
+                                                    <option key={w} value={w}>{w}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Street</label>
@@ -436,7 +464,7 @@ const ProfilePage = () => {
                                                 }
 
                                                 if (
-                                                    ['id', 'profile_picture', 'interests', 'email_verified_at', 'created_at', 'updated_at', 'is_admin', 'is_organizer', 'role', 'token', 'address', 'municipality_id'].includes(key) ||
+                                                    ['id', 'profile_picture', 'interests', 'email_verified_at', 'is_email_verified', 'phone_verified_at', 'is_phone_verified', 'created_at', 'updated_at', 'is_admin', 'is_organizer', 'role', 'token', 'address', 'municipality_id', 'province', 'district', 'municipality'].includes(key) ||
                                                     typeof value === 'object'
                                                 ) return null;
 
