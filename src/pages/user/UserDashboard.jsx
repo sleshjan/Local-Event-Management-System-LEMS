@@ -213,11 +213,6 @@ const UserDashboard = () => {
                     onClick={() => navigate("/login")}
                     className="bg-white text-purple-600 border border-purple-200 hover:bg-purple-50 font-medium py-2 px-4 rounded-xl transition-all"
                   />
-                  <Button
-                    text="Register"
-                    onClick={() => navigate("/register")}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-xl shadow-md transition-all"
-                  />
                 </>
               )}
             </div>

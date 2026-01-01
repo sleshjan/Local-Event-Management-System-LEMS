@@ -282,12 +282,20 @@ const Register = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <Logo />
-          <Link
-            to="/login"
-            className="text-sm text-purple-600 hover:underline font-medium"
-          >
-            Back to sign in
-          </Link>
+          <div className="flex flex-col items-end">
+            <Link
+              to="/"
+              className="text-sm text-purple-600 hover:underline font-medium"
+            >
+              Go back to Dashboard
+            </Link>
+            <Link
+              to="/login"
+              className="text-sm text-gray-500 hover:underline"
+            >
+              Back to sign in
+            </Link>
+          </div>
         </div>
 
         {/* Title */}
@@ -536,7 +544,17 @@ const Register = () => {
           {/* Terms Checkbox */}
           <div className="pb-2">
             <Checkbox
-              label="I agree to the Terms and Privacy Policy"
+              label={
+                <span>
+                  I agree to the{" "}
+                  <Link
+                    to="/terms-and-privacy"
+                    className="text-purple-600 hover:underline font-medium"
+                  >
+                    Terms and Privacy Policy
+                  </Link>
+                </span>
+              }
               name="agreedToTerms"
               checked={formData.agreedToTerms}
               onChange={handleChange}

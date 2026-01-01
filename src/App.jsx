@@ -19,6 +19,7 @@ import CreateEvent from './pages/admin/CreateEvent';
 import EditEvent from './pages/admin/EditEvent';
 import ProfilePage from './pages/user/ProfilePage';
 import ResetPasswordConfirm from "./pages/auth/ResetPasswordConfirm";
+import TermsAndPrivacy from "./pages/TermsAndPrivacy";
 
 import MyEvents from "./pages/user/MyEvents";
 import UserCreateEvent from "./pages/user/CreateEvent";
@@ -33,6 +34,7 @@ function App() {
         <Route path="/select-interests" element={<SelectInterests />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPasswordConfirm />} />
+        <Route path="/terms-and-privacy" element={<TermsAndPrivacy />} />
 
         {/* User routes */}
         <Route path="/dashboard" element={<UserDashboard />} />

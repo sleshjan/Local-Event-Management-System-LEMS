@@ -135,9 +135,15 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-lg p-8 md:p-12">
-        {/* Logo */}
-        <div className="mb-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
           <Logo />
+          <Link
+            to="/"
+            className="text-sm text-purple-600 hover:underline font-medium"
+          >
+            Go back to Dashboard
+          </Link>
         </div>
 
         {/* Welcome Text */}
