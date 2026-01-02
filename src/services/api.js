@@ -1,46 +1,58 @@
 // Base configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lems.loca.lt/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 export const FILE_BASE_URL = '';
 
 /**
  * Get full image URL
- * @param {string} path - The relative path from the backend
+ * @param {string} path - The relative or absolute path from the backend
  * @returns {string} - The full URL
  */
 export const getImageUrl = (path) => {
   if (!path) return null;
 
-  if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) {
-    return path;
+  // Handle absolute URLs from the backend
+  let cleanPath = path;
+
+  // If the path is an absolute URL pointing to our backend, strip the origin
+  // to force it through the local proxy during development.
+  const backendOrigin = 'https://lems.loca.lt';
+  if (cleanPath.startsWith(backendOrigin)) {
+    cleanPath = cleanPath.substring(backendOrigin.length);
+  }
+
+  // If it's still an absolute URL (different domain, blob, data), return as is
+  if (cleanPath.startsWith('http') || cleanPath.startsWith('blob:') || cleanPath.startsWith('data:')) {
+    return cleanPath;
   }
 
   // Handle Laravel storage folder convention
-  let cleanPath = path;
-
-  // Check for specific root folders that shouldn't get /storage prefix
-  if (cleanPath.startsWith('profile_images') || cleanPath.startsWith('/profile_images') ||
-    cleanPath.startsWith('event_cover_img') || cleanPath.startsWith('/event_cover_img')) {
-    if (!cleanPath.startsWith('/')) {
-      cleanPath = `/${cleanPath}`;
-    }
-  } else if (!cleanPath.startsWith('/') && !cleanPath.startsWith('storage')) {
-    cleanPath = `/storage/${cleanPath}`;
-  } else if (cleanPath.startsWith('/') && !cleanPath.startsWith('/storage')) {
-    cleanPath = `/storage${cleanPath}`;
-  } else if (!cleanPath.startsWith('/')) {
+  // Ensure path starts with /
+  if (!cleanPath.startsWith('/')) {
     cleanPath = `/${cleanPath}`;
   }
 
-  // Prepend the backend domain (remove /api suffix if present)
-  // If API_BASE_URL is relative (e.g. '/api'), we assume same origin, so cleanPath is fine.
-  // If API_BASE_URL is absolute (e.g. 'http://localhost:8000/api'), we need 'http://localhost:8000'
-  if (API_BASE_URL.startsWith('http')) {
-    const urlObj = new URL(API_BASE_URL);
-    const origin = urlObj.origin; // e.g. http://127.0.0.1:8000
-    return `${origin}${cleanPath}`;
+  // Add /storage prefix if missing and not already a special path
+  const specialPaths = ['/profile_images', '/event_cover_img', '/storage'];
+  const isSpecial = specialPaths.some(p => cleanPath.startsWith(p));
+
+  if (!isSpecial) {
+    cleanPath = `/storage${cleanPath}`;
   }
 
-  return cleanPath;
+  // If using relative API_BASE_URL (proxy mode), return relative cleanPath
+  // This allows Vite proxy to handle the request and bypass CORS/Tunnel warnings
+  if (!API_BASE_URL.startsWith('http')) {
+    return cleanPath;
+  }
+
+  // Fallback for absolute API_BASE_URL (production/vercel)
+  try {
+    const urlObj = new URL(API_BASE_URL);
+    const origin = urlObj.origin;
+    return `${origin}${cleanPath}`;
+  } catch (e) {
+    return cleanPath;
+  }
 };
 
 /**
