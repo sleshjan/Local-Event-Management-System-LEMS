@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Menu, X, Users, Check, XCircle } from 'lucide-react';
+import { Menu, X, Users } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { userService } from '../../services/userService';
 import UserProfileIcon from '../../components/common/UserProfileIcon';
@@ -133,9 +133,6 @@ const ManageUsers = () => {
                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Role
                         </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Verified
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -165,13 +162,6 @@ const ManageUsers = () => {
                               }`}>
                               {user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'User'}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {user.is_verified ? (
-                              <Check className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-gray-400" />
-                            )}
                           </td>
                         </tr>
                       ))}

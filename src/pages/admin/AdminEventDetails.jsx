@@ -19,6 +19,7 @@ import {
 import { normalizeEventData } from '../../utils/eventUtils';
 import { getImageUrl, parseApiError } from '../../services/api';
 import { useToast } from "../../context/ToastContext";
+import { useModal } from "../../context/ModalContext";
 
 const AdminEventDetails = () => {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ const AdminEventDetails = () => {
   const { slug } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { showToast } = useToast();
+  const modal = useModal();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +77,8 @@ const AdminEventDetails = () => {
   };
 
   const handleCancelEvent = async () => {
-    if (window.confirm("Are you sure you want to cancel this event? This action cannot be reverted.")) {
+    const confirmed = await modal.confirm("Cancel Event", "Are you sure you want to cancel this event? This action cannot be reverted and will notify all participants.");
+    if (confirmed) {
       try {
         await eventService.cancelEvent(event.id);
         showToast("Event cancelled successfully.", "success");

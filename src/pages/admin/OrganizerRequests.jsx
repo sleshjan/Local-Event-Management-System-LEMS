@@ -3,6 +3,7 @@ import { Menu, X, Eye, Check, XCircle } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { organizerService } from '../../services/organizerService';
 import { useToast } from '../../context/ToastContext';
+import { useModal } from '../../context/ModalContext';
 
 const OrganizerRequests = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -10,6 +11,7 @@ const OrganizerRequests = () => {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const { showToast } = useToast();
+  const modal = useModal();
 
   useEffect(() => {
     loadRequests();
@@ -38,7 +40,7 @@ const OrganizerRequests = () => {
   };
 
   const handleReject = async (id) => {
-    const reason = prompt("Enter rejection reason:");
+    const reason = await modal.prompt("Reject Request", "Please enter the reason for rejecting this organizer request:", "e.g., Incomplete documentation");
     if (!reason) return;
 
     try {
@@ -54,7 +56,8 @@ const OrganizerRequests = () => {
   };
 
   const handleApprove = async (id) => {
-    if (!window.confirm("Are you sure you want to approve this request?")) return;
+    const confirmed = await modal.confirm("Approve Request", "Are you sure you want to approve this organizer request? This will grand the user organizer privileges.");
+    if (!confirmed) return;
 
     try {
       await organizerService.approveRequest(id);

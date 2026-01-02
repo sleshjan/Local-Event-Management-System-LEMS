@@ -1,5 +1,5 @@
 // Base configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://lems.loca.lt/api';
 export const FILE_BASE_URL = '';
 
 /**
@@ -56,6 +56,7 @@ const apiRequest = async (endpoint, { body, ...customConfig } = {}) => {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true',
+    'Bypass-Tunnel-Reminder': 'true',
     ...customConfig.headers,
   };
 
