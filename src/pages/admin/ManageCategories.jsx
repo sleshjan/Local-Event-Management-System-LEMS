@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Menu, X, Edit2, Trash2, Plus, Loader2 } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { categoryService } from '../../services/categoryService';
+import { useToast } from '../../context/ToastContext';
 
 const ManageCategories = () => {
   const navigate = useNavigate();
@@ -12,15 +13,13 @@ const ManageCategories = () => {
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState('');
+  const { showToast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const categoriesPerPage = 10;
 
   const loadCategories = async () => {
     try {
       setLoading(true);
-      setError(null);
       // Fetch all categories (using high per_page to ensure we get them all for client-side pagination)
       const response = await categoryService.getCategories({
         per_page: 1000,
@@ -41,7 +40,7 @@ const ManageCategories = () => {
         setCategories(categoryData);
       }
     } catch (err) {
-      setError("Failed to load categories. Please try again.");
+      showToast("Failed to load categories. Please try again.", "error");
     } finally {
       setLoading(false);
     }
@@ -76,8 +75,6 @@ const ManageCategories = () => {
   const handleDelete = (category) => {
     setCategoryToDelete(category);
     setShowDeleteModal(true);
-    setError(null);
-    setSuccess('');
   };
 
   const confirmDelete = async () => {
@@ -85,20 +82,16 @@ const ManageCategories = () => {
 
     try {
       setDeleting(true);
-      setError(null);
       await categoryService.deleteCategory(categoryToDelete.id);
 
-      setSuccess(`Category "${categoryToDelete.name}" deleted successfully.`);
+      showToast(`Category "${categoryToDelete.name}" deleted successfully.`, "success");
       setShowDeleteModal(false);
       setCategoryToDelete(null);
 
       // Refresh the list
       await loadCategories();
-
-      // Clear success message after 3000ms
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError("Failed to delete category. Please try again.");
+      showToast("Failed to delete category. Please try again.", "error");
     } finally {
       setDeleting(false);
     }
@@ -164,16 +157,6 @@ const ManageCategories = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
 
             {/* Notifications */}
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm animate-in fade-in slide-in-from-top-4 duration-300">
-                {error}
-              </div>
-            )}
-            {success && (
-              <div className="p-4 bg-green-50 border border-green-100 text-green-600 rounded-2xl text-sm animate-in fade-in slide-in-from-top-4 duration-300">
-                {success}
-              </div>
-            )}
 
             {/* Stats Header */}
             <div className="flex items-center justify-between bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">

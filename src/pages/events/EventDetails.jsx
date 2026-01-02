@@ -6,6 +6,7 @@ import RegistrationModal from "../../components/events/RegistrationModal";
 import { eventService } from "../../services/eventService";
 import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
+import { useToast } from "../../context/ToastContext";
 import {
   Menu,
   X,
@@ -26,6 +27,7 @@ const EventDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug } = useParams();
+  const { showToast } = useToast();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -126,7 +128,7 @@ const EventDetails = () => {
     }
 
     if (!currentUser) {
-      alert("Please login to join events.");
+      showToast("Please login to join events.", "info");
       navigate('/login');
       return;
     }
@@ -137,7 +139,7 @@ const EventDetails = () => {
     const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
 
     if (!isEmailVerified || !isPhoneVerified) {
-      alert("Both Email and Phone must be verified to join events. Please go to your profile settings to verify them.");
+      showToast("Both Email and Phone must be verified to join events. Please go to your profile settings to verify them.", "warning");
       return;
     }
 
@@ -148,14 +150,14 @@ const EventDetails = () => {
     setRegistrationLoading(true);
     try {
       await eventService.registerForEvent(registrationData);
-      alert(`Successfully registered for: ${event.title}!`);
+      showToast(`Successfully registered for: ${event.title}!`, "success");
       setShowRegisterModal(false);
 
       // Refresh event data to update attendees count
       await fetchEvent();
 
     } catch (error) {
-      alert(parseApiError(error));
+      showToast(parseApiError(error), "error");
     } finally {
       setRegistrationLoading(false);
     }
@@ -255,6 +257,7 @@ const EventDetails = () => {
                 <img
                   src={getImageUrl(event.image)}
                   alt={event.title}
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
@@ -451,7 +454,7 @@ const EventDetails = () => {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href);
-                        alert("Event link copied to clipboard!");
+                        showToast("Event link copied to clipboard!", "success");
                       }}
                       className="w-full px-6 py-3 bg-gray-50 text-gray-700 font-medium rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 flex items-center justify-center gap-2"
                     >

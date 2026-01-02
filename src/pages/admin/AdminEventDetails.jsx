@@ -18,12 +18,14 @@ import {
 
 import { normalizeEventData } from '../../utils/eventUtils';
 import { getImageUrl, parseApiError } from '../../services/api';
+import { useToast } from "../../context/ToastContext";
 
 const AdminEventDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { slug } = useParams();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { showToast } = useToast();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +50,7 @@ const AdminEventDetails = () => {
           setLoading(false);
         } catch (error) {
           if (!locationStateEvent) {
-            alert("Event not found");
+            showToast("Event not found", "error");
             navigate("/admin/dashboard");
           }
         }
@@ -76,7 +78,7 @@ const AdminEventDetails = () => {
     if (window.confirm("Are you sure you want to cancel this event? This action cannot be reverted.")) {
       try {
         await eventService.cancelEvent(event.id);
-        alert("Event cancelled successfully.");
+        showToast("Event cancelled successfully.", "success");
         navigate("/admin/dashboard");
       } catch (error) {
         let message = parseApiError(error);
@@ -85,11 +87,11 @@ const AdminEventDetails = () => {
         if (error.status === 422 || (error.response && error.response.status === 422)) {
           // If the backend didn't provide a specific useful message (generic 422), give a hint
           if (message.includes("Unprocessable Content") || message.includes("Validation failed")) {
-            message = "Ongoing or Past events cannot be cancelled.";
+            message = "Ongoing or Completed events cannot be cancelled.";
           }
         }
 
-        alert(message);
+        showToast(message, "error");
       }
     }
   };
@@ -190,6 +192,7 @@ const AdminEventDetails = () => {
                   <img
                     src={getImageUrl(event.image)}
                     alt={event.title}
+                    crossOrigin="anonymous"
                     className="w-full h-full object-cover"
                     onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                   />
@@ -408,7 +411,7 @@ const AdminEventDetails = () => {
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href);
-                        alert("Event link copied to clipboard!");
+                        showToast("Event link copied to clipboard!", "success");
                       }}
                       className="w-full px-6 py-3 bg-gray-500 text-white font-medium rounded-xl hover:bg-gray-800 transition-colors"
                     >

@@ -8,6 +8,7 @@ import AdminSidebar from '../../components/admin/AdminSidebar';
 import Sidebar from '../../components/common/Sidebar';
 import { locationService } from '../../services/locationService';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 const ProfilePage = () => {
     const navigate = useNavigate();
@@ -15,7 +16,7 @@ const ProfilePage = () => {
     const [loading, setLoading] = useState(true);
     const [isEditing, setIsEditing] = useState(false);
     const [userInterests, setUserInterests] = useState([]); // For Sidebar
-    const [successMessage, setSuccessMessage] = useState("");
+    const { showToast } = useToast();
 
 
     // Form State
@@ -182,14 +183,14 @@ const ProfilePage = () => {
         if (file) {
             // Validate File Size (Max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                alert("File size exceeds 5MB. Please upload a smaller image.");
+                showToast("File size exceeds 5MB. Please upload a smaller image.", "error");
                 return;
             }
 
             // Validate File Type
             const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
             if (!validTypes.includes(file.type)) {
-                alert("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.");
+                showToast("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.", "error");
                 return;
             }
 
@@ -229,10 +230,9 @@ const ProfilePage = () => {
             }
 
             setIsEditing(false);
-            setSuccessMessage("Profile updated successfully!");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            showToast("Profile updated successfully!", "success");
         } catch (err) {
-            alert(parseApiError(err));
+            showToast(parseApiError(err), "error");
         } finally {
             setLoading(false);
         }
@@ -278,6 +278,7 @@ const ProfilePage = () => {
                                     <img
                                         src={previewImage || getImageUrl(user?.profile_picture) || "https://ui-avatars.com/api/?name=" + (user?.name || 'User')}
                                         alt="Profile"
+                                        crossOrigin="anonymous"
                                         className="w-32 h-32 rounded-full border-4 border-gray-100 object-cover"
                                     />
                                     {isEditing && (
@@ -300,12 +301,6 @@ const ProfilePage = () => {
                                 </div>
                             </div>
 
-                            {/* Success Message - Always visible if exists */}
-                            {successMessage && (
-                                <div className="bg-green-50 text-green-700 p-4 rounded-lg mb-6 border border-green-200">
-                                    {successMessage}
-                                </div>
-                            )}
 
                             {/* Edit Form or Display */}
                             {isEditing ? (

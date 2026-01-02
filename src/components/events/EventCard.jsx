@@ -43,6 +43,7 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
           <img
             src={getImageUrl(displayEvent.image)}
             alt={displayEvent.title}
+            crossOrigin="anonymous"
             className="w-full h-full object-cover"
             onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
           />
@@ -56,12 +57,14 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
         {displayEvent.status && (
           <div className="absolute top-3 right-3 z-10">
             <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm capitalize border ${displayEvent.status.toLowerCase() === 'active'
-                ? 'bg-green-500 text-white border-green-600'
-                : displayEvent.status.toLowerCase() === 'upcoming'
-                  ? 'bg-blue-500 text-white border-blue-600'
+              ? 'bg-green-500 text-white border-green-600'
+              : displayEvent.status.toLowerCase() === 'upcoming'
+                ? 'bg-blue-500 text-white border-blue-600'
+                : (displayEvent.status.toLowerCase() === 'completed' || displayEvent.status.toLowerCase() === 'past')
+                  ? 'bg-gray-600 text-white border-gray-700'
                   : 'bg-gray-100 text-gray-600 border-gray-200'
               }`}>
-              {displayEvent.status}
+              {displayEvent.status === 'Past' ? 'Completed' : displayEvent.status}
             </span>
           </div>
         )}

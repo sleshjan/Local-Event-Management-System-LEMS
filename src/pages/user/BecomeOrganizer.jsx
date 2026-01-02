@@ -7,10 +7,12 @@ import { Menu, X } from "lucide-react";
 import { organizerService } from "../../services/organizerService";
 import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
+import { useToast } from "../../context/ToastContext";
 
 const BecomeOrganizer = () => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     phone_no: "",
     reason: "",
@@ -18,6 +20,9 @@ const BecomeOrganizer = () => {
   });
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [myRequests, setMyRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [canSubmit, setCanSubmit] = useState(true);
 
   // Get user interests from localStorage
   const [userInterests, setUserInterests] = useState([]);
@@ -41,7 +46,34 @@ const BecomeOrganizer = () => {
       }
     };
     loadUserPhone();
+    fetchMyRequests();
   }, []);
+
+  const fetchMyRequests = async () => {
+    try {
+      setIsLoadingRequests(true);
+      const response = await organizerService.getMyRequests();
+      const requests = response.data || response || [];
+      setMyRequests(requests);
+
+      // Determine if user can submit a new request
+      // Requirements: if list is empty OR last entry status is 'rejected'
+      if (requests.length === 0) {
+        setCanSubmit(true);
+      } else {
+        const lastRequest = requests[0]; // Assuming latest is first
+        if (lastRequest.status === 'rejected' || lastRequest.status === 'Rejected') {
+          setCanSubmit(true);
+        } else {
+          setCanSubmit(false);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch my requests", err);
+    } finally {
+      setIsLoadingRequests(false);
+    }
+  };
 
   const validatePhone = (phone) => {
     const phoneRegex = /^[\d\s\-\+\(\)]+$/;
@@ -116,13 +148,13 @@ const BecomeOrganizer = () => {
       const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
 
       if (!isEmailVerified || !isPhoneVerified) {
-        alert("Both Email and Phone must be verified to become an organizer. Please verify them in your Profile settings.");
+        showToast("Both Email and Phone must be verified to become an organizer. Please verify them in your Profile settings.", "warning");
         navigate('/profile');
         return;
       }
     } catch (err) {
       // Error check
-      alert("Failed to verify account status. Please try again.");
+      showToast("Failed to verify account status. Please try again.", "error");
       return;
     }
 
@@ -151,10 +183,10 @@ const BecomeOrganizer = () => {
 
     try {
       await organizerService.createRequest(formData);
-      alert("Your request to become an organizer has been submitted!");
+      showToast("Your request to become an organizer has been submitted!", "success");
       navigate("/dashboard");
     } catch (error) {
-      alert(parseApiError(error));
+      showToast(parseApiError(error), "error");
     }
   };
 
@@ -216,6 +248,35 @@ const BecomeOrganizer = () => {
               <p className="text-gray-600 mb-4">
                 Fill out the form below to request organizer privileges.
               </p>
+
+              {/* Recent Requests List */}
+              {myRequests.length > 0 && (
+                <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                  <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">
+                    Recent Requests
+                  </h3>
+                  <div className="space-y-3">
+                    {myRequests.map((req, index) => (
+                      <div key={req.id || index} className="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-800 line-clamp-1">
+                            {req.reason}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${req.status === 'approved' ? 'bg-green-100 text-green-700 border border-green-200' :
+                          req.status === 'rejected' ? 'bg-red-100 text-red-700 border border-red-200' :
+                            'bg-blue-100 text-blue-700 border border-blue-200'
+                          }`}>
+                          {req.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Phone Number */}
@@ -285,7 +346,13 @@ const BecomeOrganizer = () => {
                   </button>
 
                   <div className="w-full sm:w-1/2">
-                    <Button text="Submit Request" type="submit" fullWidth />
+                    <Button
+                      text={!canSubmit ? `Status: ${myRequests[0]?.status || 'Pending'}` : "Submit Request"}
+                      type="submit"
+                      fullWidth
+                      disabled={!canSubmit}
+                      className={!canSubmit ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-75" : ""}
+                    />
                   </div>
                 </div>
               </form>

@@ -30,6 +30,7 @@ const UserProfileIcon = () => {
                 <img
                     src={getImageUrl(user.profile_picture)}
                     alt="Profile"
+                    crossOrigin="anonymous"
                     className="w-12 h-12 rounded-full object-cover border border-gray-200"
                 />
             ) : (

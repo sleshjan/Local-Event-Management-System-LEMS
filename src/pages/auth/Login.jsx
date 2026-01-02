@@ -6,6 +6,7 @@ import Button from "../../components/common/Button";
 import { Link } from "react-router-dom";
 import { authService } from "../../services/authService";
 import { parseApiError } from "../../services/api";
+import { useToast } from "../../context/ToastContext";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
-  const [apiError, setApiError] = useState("");
+  const { showToast } = useToast();
 
   // Validation functions
   const validateEmail = (email) => {
@@ -36,11 +37,6 @@ const Login = () => {
       ...formData,
       [name]: value,
     });
-
-    // Clear API error when user types
-    if (apiError) {
-      setApiError("");
-    }
 
     // Clear error when user starts typing
     if (errors[name]) {
@@ -110,7 +106,6 @@ const Login = () => {
 
     // Start loading
     setLoading(true);
-    setApiError("");
 
     try {
       const response = await authService.login(formData);
@@ -126,7 +121,7 @@ const Login = () => {
       }
     } catch (error) {
       const msg = parseApiError(error);
-      setApiError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -156,12 +151,6 @@ const Login = () => {
           </p>
         </div>
 
-        {/* API Error Alert */}
-        {apiError && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            <p className="text-sm">{apiError}</p>
-          </div>
-        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">

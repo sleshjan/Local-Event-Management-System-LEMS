@@ -7,10 +7,12 @@ import SearchInput from "../../components/common/SearchInput";
 import UserProfileIcon from "../../components/common/UserProfileIcon";
 import RegistrationDetailsModal from "../../components/admin/RegistrationDetailsModal";
 import { Menu, X, Eye } from "lucide-react";
+import { useToast } from '../../context/ToastContext';
 
 const ManageRegistrations = () => {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const { showToast } = useToast();
     const [registrations, setRegistrations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
@@ -120,7 +122,7 @@ const ManageRegistrations = () => {
             setIsDetailsOpen(true);
         } catch (error) {
             console.error("Failed to fetch registration details", error);
-            alert("Failed to load registration details.");
+            showToast("Failed to load registration details.", "error");
         }
     };
 

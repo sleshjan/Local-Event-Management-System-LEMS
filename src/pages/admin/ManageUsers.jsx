@@ -3,12 +3,13 @@ import { Menu, X, Users, Check, XCircle } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { userService } from '../../services/userService';
 import UserProfileIcon from '../../components/common/UserProfileIcon';
+import { useToast } from '../../context/ToastContext';
 
 const ManageUsers = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { showToast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const usersPerPage = 10;
 
@@ -25,14 +26,14 @@ const ManageUsers = () => {
           setUsers(data.users);
         } else {
           setUsers([]);
-          setError("Received invalid data format from server.");
+          showToast("Received invalid data format from server.", "error");
         }
         setLoading(false);
       } catch (err) {
         if (err.status === 403) {
-          setError("Access Denied: You do not have permission to view users. Please ensure you are logged in as an Admin.");
+          showToast("Access Denied: You do not have permission to view users.", "error");
         } else {
-          setError("Failed to load users. Please try again.");
+          showToast("Failed to load users. Please try again.", "error");
         }
         setLoading(false);
       }
@@ -117,11 +118,6 @@ const ManageUsers = () => {
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
               </div>
-            ) : error ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-                <strong className="font-bold">Error!</strong>
-                <span className="block sm:inline"> {error}</span>
-              </div>
             ) : (
               <div className="bg-white shadow overflow-hidden sm:rounded-lg flex flex-col h-full">
                 <div className="overflow-x-auto flex-1">
@@ -162,10 +158,10 @@ const ManageUsers = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${(user.role === 'admin' || user.role === 'Admin')
-                                ? 'bg-purple-100 text-purple-800'
-                                : (user.role === 'organizer' || user.role === 'Organizer')
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : 'bg-green-100 text-green-800'
+                              ? 'bg-purple-100 text-purple-800'
+                              : (user.role === 'organizer' || user.role === 'Organizer')
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-green-100 text-green-800'
                               }`}>
                               {user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1)) : 'User'}
                             </span>

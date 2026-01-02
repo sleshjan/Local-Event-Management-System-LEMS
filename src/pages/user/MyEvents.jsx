@@ -8,10 +8,12 @@ import { userService } from "../../services/userService";
 import { eventService } from "../../services/eventService";
 import { parseApiError } from "../../services/api";
 import UserProfileIcon from "../../components/common/UserProfileIcon";
+import { useToast } from '../../context/ToastContext';
 
 const MyEvents = () => {
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const { showToast } = useToast();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState(null);
@@ -68,10 +70,7 @@ const MyEvents = () => {
 
                     ev = ev || {};
                     const normEvent = normalizeEventData(ev);
-
-                    // Normalize status to Title Case for consistency (upcoming -> Upcoming)
-                    const rawStatus = ev.status || "upcoming";
-                    const status = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1).toLowerCase();
+                    const status = normEvent.status;
 
                     return {
                         // Registration Details
@@ -116,7 +115,7 @@ const MyEvents = () => {
             ));
         } catch (error) {
             console.error("View ticket failed:", error);
-            alert("Failed to view ticket. " + (error.message || "Please try again."));
+            showToast("Failed to view ticket. " + (error.message || "Please try again."), "error");
         }
     };
 
@@ -133,7 +132,7 @@ const MyEvents = () => {
             window.URL.revokeObjectURL(url);
         } catch (error) {
             console.error("Download ticket failed:", error);
-            alert("Failed to download ticket. " + (error.message || "Please try again."));
+            showToast("Failed to download ticket. " + (error.message || "Please try again."), "error");
         }
     };
 
@@ -148,14 +147,14 @@ const MyEvents = () => {
         setCancellationLoading(true);
         try {
             await eventService.cancelRegistration(selectedEventId, data);
-            alert("Registration cancelled successfully.");
+            showToast("Registration cancelled successfully.", "success");
 
             // Remove the cancelled event from the list (using registrationId)
             setEvents(prevEvents => prevEvents.filter(e => e.registrationId !== selectedEventId));
             setShowCancelModal(false);
             setSelectedEventId(null);
         } catch (error) {
-            alert(parseApiError(error));
+            showToast(parseApiError(error), "error");
         } finally {
             setCancellationLoading(false);
         }
@@ -165,8 +164,7 @@ const MyEvents = () => {
         const styles = {
             'Upcoming': 'bg-blue-100 text-blue-800',
             'Active': 'bg-green-100 text-green-800',
-            'Past': 'bg-gray-100 text-gray-800',
-            'Completed': 'bg-gray-100 text-gray-800',
+            'Completed': 'bg-gray-200 text-gray-800',
             'Cancelled': 'bg-red-100 text-red-800'
         };
         return (

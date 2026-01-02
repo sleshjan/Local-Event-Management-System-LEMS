@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { Menu, X, Eye, Check, XCircle } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { organizerService } from '../../services/organizerService';
+import { useToast } from '../../context/ToastContext';
 
 const OrganizerRequests = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadRequests();
@@ -45,8 +47,9 @@ const OrganizerRequests = () => {
       if (selectedRequest && selectedRequest.id === id) {
         closeModal();
       }
+      showToast("Request rejected successfully", "success");
     } catch (error) {
-      alert(error.message || "Failed to reject request");
+      showToast(error.message || "Failed to reject request", "error");
     }
   };
 
@@ -59,8 +62,9 @@ const OrganizerRequests = () => {
       if (selectedRequest && selectedRequest.id === id) {
         closeModal();
       }
+      showToast("Request approved successfully", "success");
     } catch (error) {
-      alert(error.message || "Failed to approve request");
+      showToast(error.message || "Failed to approve request", "error");
     }
   }
 
@@ -242,12 +246,12 @@ const OrganizerRequests = () => {
 
               {/* Status Banner */}
               <div className={`p-4 rounded-xl flex items-center gap-3 ${selectedRequest.status === 'approved' ? 'bg-green-50 text-green-700 border border-green-100' :
-                  selectedRequest.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
-                    'bg-blue-50 text-blue-700 border border-blue-100'
+                selectedRequest.status === 'rejected' ? 'bg-red-50 text-red-700 border border-red-100' :
+                  'bg-blue-50 text-blue-700 border border-blue-100'
                 }`}>
                 <div className={`w-2 h-2 rounded-full ${selectedRequest.status === 'approved' ? 'bg-green-500' :
-                    selectedRequest.status === 'rejected' ? 'bg-red-500' :
-                      'bg-blue-500'
+                  selectedRequest.status === 'rejected' ? 'bg-red-500' :
+                    'bg-blue-500'
                   }`} />
                 <span className="font-semibold capitalize">{selectedRequest.status}</span>
                 <span className="text-xs opacity-75 ml-auto">ID: #{selectedRequest.id}</span>

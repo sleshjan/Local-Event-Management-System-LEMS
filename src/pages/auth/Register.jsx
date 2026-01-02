@@ -7,9 +7,11 @@ import Logo from "../../components/common/Logo";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
 import Checkbox from "../../components/common/Checkbox";
+import { useToast } from "../../context/ToastContext";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -140,14 +142,14 @@ const Register = () => {
     if (file) {
       // Validate File Size (Max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size exceeds 5MB. Please upload a smaller image.");
+        showToast("File size exceeds 5MB. Please upload a smaller image.", "error");
         return;
       }
 
       // Validate File Type
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!validTypes.includes(file.type)) {
-        alert("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.");
+        showToast("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.", "error");
         return;
       }
 

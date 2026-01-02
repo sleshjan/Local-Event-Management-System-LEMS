@@ -5,9 +5,11 @@ import Button from '../common/Button';
 import { Upload, X } from 'lucide-react';
 import { eventService } from '../../services/eventService';
 import { categoryService } from '../../services/categoryService';
+import { useToast } from '../../context/ToastContext';
 
 const EventForm = ({ initialData = null, mode = 'create' }) => {
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -142,14 +144,14 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     if (file) {
       // Validate File Size (Max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert("File size exceeds 5MB. Please upload a smaller image.");
+        showToast("File size exceeds 5MB. Please upload a smaller image.", "error");
         return;
       }
 
       // Validate File Type
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       if (!validTypes.includes(file.type)) {
-        alert("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.");
+        showToast("Invalid file format. Please upload JPG, PNG, GIF, or WEBP.", "error");
         return;
       }
 
@@ -336,11 +338,11 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     try {
       if (initialData?.id) {
         await eventService.updateEvent(initialData.id, data);
-        alert('Event updated successfully!');
+        showToast('Event updated successfully!', 'success');
         navigate(`/admin/events/${initialData.slug || initialData.id}`);
       } else {
         await eventService.createEvent(data);
-        alert('Event created successfully!');
+        showToast('Event created successfully!', 'success');
         navigate('/admin/dashboard');
       }
     } catch (err) {
@@ -360,7 +362,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         errorMessage = err.message;
       }
 
-      alert(`Error: \n${errorMessage}`);
+      showToast(`Error: ${errorMessage}`, "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -397,6 +399,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
             <img
               src={imagePreview}
               alt="Event preview"
+              crossOrigin="anonymous"
               className="w-full h-64 object-cover rounded-xl"
             />
             <button

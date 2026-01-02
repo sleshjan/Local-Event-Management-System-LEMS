@@ -23,42 +23,47 @@ import TermsAndPrivacy from "./pages/TermsAndPrivacy";
 
 import MyEvents from "./pages/user/MyEvents";
 import UserCreateEvent from "./pages/user/CreateEvent";
+import { ToastProvider } from "./context/ToastContext";
+import ToastContainer from "./components/common/ToastContainer";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<UserDashboard />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/select-interests" element={<SelectInterests />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPasswordConfirm />} />
-        <Route path="/terms-and-privacy" element={<TermsAndPrivacy />} />
+    <ToastProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<UserDashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/select-interests" element={<SelectInterests />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPasswordConfirm />} />
+          <Route path="/terms-and-privacy" element={<TermsAndPrivacy />} />
 
-        {/* User routes */}
-        <Route path="/dashboard" element={<UserDashboard />} />
-        <Route path="/my-events" element={<MyEvents />} />
-        <Route path="/user/create-event" element={<UserCreateEvent />} />
-        <Route path="/change-password" element={<ResetPassword />} />
-        <Route path="/become-organizer" element={<BecomeOrganizer />} />
-        <Route path="/event/:slug" element={<EventDetails />} />
+          {/* User routes */}
+          <Route path="/dashboard" element={<UserDashboard />} />
+          <Route path="/my-events" element={<MyEvents />} />
+          <Route path="/user/create-event" element={<UserCreateEvent />} />
+          <Route path="/change-password" element={<ResetPassword />} />
+          <Route path="/become-organizer" element={<BecomeOrganizer />} />
+          <Route path="/event/:slug" element={<EventDetails />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/categories" element={<ManageCategories />} />
-        <Route path="/admin/edit-category/:id" element={<EditCategory />} />
-        <Route path="/admin/add-category" element={<AddCategory />} />
-        <Route path="/admin/users" element={<ManageUsers />} />
-        <Route path="/admin/events/:slug" element={<AdminEventDetails />} />
-        <Route path="/admin/organizer-requests" element={<OrganizerRequests />} />
-        <Route path="/admin/registrations" element={<ManageRegistrations />} />
-        <Route path="/admin/create-event" element={<CreateEvent />} />
-        <Route path="/admin/edit-event/:id" element={<EditEvent />} />
-        <Route path="/admin/profile" element={<ProfilePage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Admin Routes */}
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/categories" element={<ManageCategories />} />
+          <Route path="/admin/edit-category/:id" element={<EditCategory />} />
+          <Route path="/admin/add-category" element={<AddCategory />} />
+          <Route path="/admin/users" element={<ManageUsers />} />
+          <Route path="/admin/events/:slug" element={<AdminEventDetails />} />
+          <Route path="/admin/organizer-requests" element={<OrganizerRequests />} />
+          <Route path="/admin/registrations" element={<ManageRegistrations />} />
+          <Route path="/admin/create-event" element={<CreateEvent />} />
+          <Route path="/admin/edit-event/:id" element={<EditEvent />} />
+          <Route path="/admin/profile" element={<ProfilePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Routes>
+      </BrowserRouter>
+      <ToastContainer />
+    </ToastProvider>
   );
 }
 

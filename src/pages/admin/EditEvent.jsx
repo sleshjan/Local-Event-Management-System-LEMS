@@ -5,12 +5,14 @@ import AdminSidebar from '../../components/admin/AdminSidebar';
 import EventForm from '../../components/events/EventForm';
 import { eventService } from '../../services/eventService';
 import { normalizeEventData } from '../../utils/eventUtils';
+import { useToast } from '../../context/ToastContext';
 
 const EditEvent = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { showToast } = useToast();
   const [eventData, setEventData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -35,7 +37,7 @@ const EditEvent = () => {
         setEventData(normalized);
       } catch (error) {
         console.error("Failed to load event:", error);
-        alert("Failed to load event details");
+        showToast("Failed to load event details", "error");
         navigate('/admin/dashboard');
       } finally {
         setLoading(false);

@@ -123,7 +123,7 @@ export const normalizeEventData = (data) => {
                     } else if (now >= start && now <= end) {
                         status = 'Active';
                     } else {
-                        status = 'Past';
+                        status = 'Completed';
                     }
                 }
             } else if (event.start_datetime) {
@@ -132,7 +132,7 @@ export const normalizeEventData = (data) => {
                 // But usually events have end. Let's rely on backend fallback if invalid dates.
                 const start = new Date(event.start_datetime);
                 if (now >= start) {
-                    // If it started and no end time, maybe it's just 'Active' or 'Past' depending on duration?
+                    // If it started and no end time, maybe it's just 'Active' or 'Completed' depending on duration?
                     // Let's assume Active for a day if no end time? 
                     // For now, let's just say Active if start is passed.
                     status = 'Active';

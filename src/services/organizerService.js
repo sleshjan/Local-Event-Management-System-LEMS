@@ -19,6 +19,11 @@ export const organizerService = {
         return await apiRequest("/organizer-request");
     },
 
+    // Get user's own requests
+    getMyRequests: async () => {
+        return await apiRequest("/organizer-request/my");
+    },
+
     // Reject request (admin)
     rejectRequest: async (id, rejectionReason) => {
         return await apiRequest(`/organizer-request/${id}/reject`, {
