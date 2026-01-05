@@ -10,46 +10,53 @@ export const FILE_BASE_URL = '';
 export const getImageUrl = (path) => {
   if (!path) return null;
 
-  // Handle absolute URLs from the backend
   let cleanPath = path;
 
-  // If the path is an absolute URL pointing to our backend, strip the origin
-  // to force it through the local proxy during development.
+  // 1. Handle absolute URLs pointing to our backend
   const backendOrigin = 'https://trendingvista.com/lems';
   if (cleanPath.startsWith(backendOrigin)) {
+    // In production (absolute API_BASE_URL), absolute URLs are generally fine as is
+    if (API_BASE_URL.startsWith('http')) return cleanPath;
+
+    // In development (proxy mode), strip the origin to force the request through the local proxy
     cleanPath = cleanPath.substring(backendOrigin.length);
   }
 
-  // If it's still an absolute URL (different domain, blob, data), return as is
+  // 2. If it's a non-backend absolute URL (or blob/data), return as is
   if (cleanPath.startsWith('http') || cleanPath.startsWith('blob:') || cleanPath.startsWith('data:')) {
     return cleanPath;
   }
 
-  // Handle Laravel storage folder convention
-  // Ensure path starts with /
+  // 3. Normalize relative path to start with /
   if (!cleanPath.startsWith('/')) {
     cleanPath = `/${cleanPath}`;
   }
 
-  // Add /storage prefix if missing and not already a special path
-  const specialPaths = ['/profile_images', '/event_cover_img', '/storage'];
-  const isSpecial = specialPaths.some(p => cleanPath.startsWith(p));
+  // 4. Remove redundant /api prefix if the backend includes it in the path
+  if (cleanPath.startsWith('/api/')) {
+    cleanPath = cleanPath.substring(4);
+  }
 
+  // 5. Ensure path uses the Laravel storage convention if needed
+  const specialPaths = ['/storage', '/profile_images', '/event_cover_img'];
+  const isSpecial = specialPaths.some(p => cleanPath.startsWith(p));
   if (!isSpecial) {
     cleanPath = `/storage${cleanPath}`;
   }
 
-  // If using relative API_BASE_URL (proxy mode), return relative cleanPath
-  // This allows Vite proxy to handle the request and bypass CORS/Tunnel warnings
+  // 6. Construct final URL
   if (!API_BASE_URL.startsWith('http')) {
+    // Relative mode (Vite Proxy handles the base)
     return cleanPath;
   }
 
-  // Fallback for absolute API_BASE_URL (production/vercel)
+  // Absolute mode (Production/Vercel)
   try {
     const urlObj = new URL(API_BASE_URL);
-    const origin = urlObj.origin;
-    return `${origin}${cleanPath}`;
+    // If API is at .../lems/api, files are at .../lems/storage
+    // We extract the base by removing /api from the pathname
+    const baseSubPath = urlObj.origin + urlObj.pathname.replace(/\/api\/?$/, '');
+    return `${baseSubPath}${cleanPath}`;
   } catch (e) {
     return cleanPath;
   }

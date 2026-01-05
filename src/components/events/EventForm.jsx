@@ -6,6 +6,8 @@ import { Upload, X } from 'lucide-react';
 import { eventService } from '../../services/eventService';
 import { categoryService } from '../../services/categoryService';
 import { useToast } from '../../context/ToastContext';
+import LocationPicker from './LocationPicker';
+import RichTextEditor from '../common/RichTextEditor';
 
 const EventForm = ({ initialData = null, mode = 'create' }) => {
   const navigate = useNavigate();
@@ -25,8 +27,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     maxParticipants: '',
     duration: '',
     image: '',
-    organizer: '',
-    organizerBio: ''
   });
 
   const [imageFile, setImageFile] = useState(null);
@@ -89,8 +89,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         maxParticipants: initialData.maxParticipants || initialData.total_seat || '',
         duration: initialData.duration || '',
         image: initialData.cover_image || initialData.image || '',
-        organizer: initialData.organizer || 'LEC club',
-        organizerBio: initialData.organizerBio || initialData.organizer_bio || 'LEC club is a designated club for organizing events.'
       });
       setImagePreview(initialData.cover_image || initialData.image);
     }
@@ -178,6 +176,37 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     });
   };
 
+  const handleDescriptionChange = (content) => {
+    setFormData({
+      ...formData,
+      description: content
+    });
+
+    if (errors.description) {
+      setErrors({
+        ...errors,
+        description: ''
+      });
+    }
+  };
+
+  const handleMapLocationChange = (locationData) => {
+    setFormData({
+      ...formData,
+      location: locationData.locationName,
+      latitude: locationData.lat.toString(),
+      longitude: locationData.lng.toString()
+    });
+
+    // Clear errors when a location is picked
+    setErrors(prev => ({
+      ...prev,
+      location: '',
+      latitude: '',
+      longitude: ''
+    }));
+  };
+
   const validateField = (name, value) => {
     let error = '';
 
@@ -228,9 +257,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
         if (!value) error = 'Max participants is required';
         else if (isNaN(value) || value < 1) error = 'Must be a positive number';
         break;
-      case 'organizer':
-        if (!value.trim()) error = 'Organizer name is required';
-        break;
       default:
         break;
     }
@@ -250,7 +276,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     // Validate all fields
     const fieldNames = [
       'title', 'description', 'startDate', 'endDate', 'startTime', 'endTime',
-      'location', 'latitude', 'longitude', 'maxParticipants', 'organizer'
+      'location', 'latitude', 'longitude', 'maxParticipants'
     ];
     const newErrors = {};
     let hasErrors = false;
@@ -291,8 +317,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
     data.append('longitude', formData.longitude);
     data.append('total_seat', parseInt(formData.maxParticipants));
     data.append('seat_price', parseFloat(formData.price || 0));
-    data.append('organizer', formData.organizer);
-    data.append('organizer_bio', formData.organizerBio || '');
     data.append('duration', formData.duration || '0');
 
     // Sanitize Categories: Ensure we're sending IDs (integers), not names
@@ -431,21 +455,13 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
       {/* Description */}
       <div>
-        <label className="block text-gray-700 text-sm font-medium mb-2">
-          Description
-        </label>
-        <textarea
-          name="description"
+        <RichTextEditor
+          label="Description"
           value={formData.description}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          onChange={handleDescriptionChange}
           placeholder="Describe your event in detail..."
-          rows="6"
-          className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
+          error={touched.description ? errors.description : ''}
         />
-        {touched.description && errors.description && (
-          <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-        )}
       </div>
 
       {/* Start Date & End Date */}
@@ -510,57 +526,26 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
 
       {/* Location Section */}
       <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Location</h3>
-
-        {/* Event Location */}
-
-        {/* City/Location */}
-        <div className="mb-4">
-          <Input
-            label="City/Location"
-            type="text"
-            name="location"
-            placeholder="New York, NY"
-            value={formData.location}
-            onChange={handleChange}
-            onBlur={handleBlur}
-          />
-          {touched.location && errors.location && (
-            <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Event Location</h3>
+          {formData.location && (
+            <span className="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
+              {formData.location}
+            </span>
           )}
         </div>
 
-        {/* Latitude & Longitude */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Input
-              label="Latitude"
-              type="text"
-              name="latitude"
-              placeholder="40.7829"
-              value={formData.latitude}
-              onChange={handleChange}
-              onBlur={handleBlur}
-            />
-            {touched.latitude && errors.latitude && (
-              <p className="text-red-500 text-sm mt-1">{errors.latitude}</p>
-            )}
-          </div>
-          <div>
-            <Input
-              label="Longitude"
-              type="text"
-              name="longitude"
-              placeholder="-73.9654"
-              value={formData.longitude}
-              onChange={handleChange}
-              onBlur={handleBlur}
-            />
-            {touched.longitude && errors.longitude && (
-              <p className="text-red-500 text-sm mt-1">{errors.longitude}</p>
-            )}
-          </div>
-        </div>
+        <LocationPicker
+          initialLat={formData.latitude}
+          initialLng={formData.longitude}
+          onLocationChange={handleMapLocationChange}
+        />
+
+        {(errors.location || errors.latitude || errors.longitude) && (
+          <p className="text-red-500 text-sm mt-1">
+            {errors.location || 'Please pick a location on the map'}
+          </p>
+        )}
       </div>
 
       {/* Categories */}
@@ -650,42 +635,6 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
           onChange={handleChange}
           onBlur={handleBlur}
         />
-      </div>
-
-      {/* Organizer Details */}
-      <div className="border-t border-gray-200 pt-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Organizer Details</h3>
-
-        <div className="space-y-4">
-          <div>
-            <Input
-              label="Organizer Name"
-              type="text"
-              name="organizer"
-              placeholder="Event Company Name"
-              value={formData.organizer}
-              onChange={handleChange}
-              onBlur={handleBlur}
-            />
-            {touched.organizer && errors.organizer && (
-              <p className="text-red-500 text-sm mt-1">{errors.organizer}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-gray-700 text-sm font-medium mb-2">
-              Organizer Bio (Optional)
-            </label>
-            <textarea
-              name="organizerBio"
-              value={formData.organizerBio}
-              onChange={handleChange}
-              placeholder="Brief description of the organizer..."
-              rows="3"
-              className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Action Buttons */}

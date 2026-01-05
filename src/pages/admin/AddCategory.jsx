@@ -4,6 +4,7 @@ import { Menu, X, ArrowLeft, Plus, Loader2 } from 'lucide-react';
 import AdminSidebar from '../../components/admin/AdminSidebar';
 import { categoryService } from '../../services/categoryService';
 import { parseApiError } from '../../services/api';
+import RichTextEditor from '../../components/common/RichTextEditor';
 
 const AddCategory = () => {
     const navigate = useNavigate();
@@ -125,16 +126,10 @@ const AddCategory = () => {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Description
-                                    </label>
-                                    <textarea
-                                        id="description"
-                                        rows="4"
-                                        required
+                                    <RichTextEditor
+                                        label="Description"
                                         value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all resize-none"
+                                        onChange={(content) => setFormData({ ...formData, description: content })}
                                         placeholder="Enter category description..."
                                     />
                                 </div>

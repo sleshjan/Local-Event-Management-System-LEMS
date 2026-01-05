@@ -8,6 +8,7 @@ import { organizerService } from "../../services/organizerService";
 import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
+import RichTextEditor from "../../components/common/RichTextEditor";
 
 const BecomeOrganizer = () => {
   const navigate = useNavigate();
@@ -299,40 +300,23 @@ const BecomeOrganizer = () => {
 
                 {/* Reason for becoming an organizer */}
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2">
-                    Reason for becoming an organizer
-                  </label>
-                  <textarea
-                    name="reason"
+                  <RichTextEditor
+                    label="Reason for becoming an organizer"
                     value={formData.reason}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
+                    onChange={(content) => setFormData({ ...formData, reason: content })}
                     placeholder="Enter the reason for becoming an organizer"
-                    rows="4"
-                    className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
+                    error={touched.reason ? errors.reason : ''}
                   />
-                  {touched.reason && errors.reason && (
-                    <p className="text-red-500 text-sm mt-1">{errors.reason}</p>
-                  )}
                 </div>
 
                 {/* Additional Information */}
                 <div>
-                  <label className="block text-gray-700 text-sm font-medium mb-2">
-                    Additional Information
-                  </label>
-                  <textarea
-                    name="additional_information"
+                  <RichTextEditor
+                    label="Additional Information"
                     value={formData.additional_information}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
+                    onChange={(content) => setFormData({ ...formData, additional_information: content })}
                     placeholder="Any extra details you'd like to share"
-                    rows="3"
-                    className="w-full px-4 py-3 bg-purple-50 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition-all resize-none"
                   />
-                  {touched.additional_information && errors.additional_information && (
-                    <p className="text-red-500 text-sm mt-1">{errors.additional_information}</p>
-                  )}
                 </div>
 
                 {/* Buttons */}

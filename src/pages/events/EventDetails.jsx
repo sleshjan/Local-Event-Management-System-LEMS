@@ -291,9 +291,10 @@ const EventDetails = () => {
                     <h2 className="text-xl font-bold text-gray-900 mb-3">
                       About This Event
                     </h2>
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-                      {event.description}
-                    </p>
+                    <div
+                      className="text-gray-700 leading-relaxed prose prose-purple max-w-none"
+                      dangerouslySetInnerHTML={{ __html: event.description }}
+                    />
                   </div>
                 )}
 
