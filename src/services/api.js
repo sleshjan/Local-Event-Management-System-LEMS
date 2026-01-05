@@ -15,7 +15,7 @@ export const getImageUrl = (path) => {
 
   // If the path is an absolute URL pointing to our backend, strip the origin
   // to force it through the local proxy during development.
-  const backendOrigin = 'https://lems.loca.lt';
+  const backendOrigin = 'https://trendingvista.com/lems';
   if (cleanPath.startsWith(backendOrigin)) {
     cleanPath = cleanPath.substring(backendOrigin.length);
   }
