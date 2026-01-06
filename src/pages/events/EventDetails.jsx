@@ -69,6 +69,8 @@ const EventDetails = () => {
           myRegs = registrations;
         } else if (registrations && Array.isArray(registrations.data)) {
           myRegs = registrations.data;
+        } else if (registrations?.data && Array.isArray(registrations.data.data)) {
+          myRegs = registrations.data.data;
         }
 
         // Check if any registration matches this event
@@ -137,10 +139,9 @@ const EventDetails = () => {
     const userData = currentUser.data || currentUser; // Handle potential structure diffs
 
     const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
-    const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
 
-    if (!isEmailVerified || !isPhoneVerified) {
-      showToast("Both Email and Phone must be verified to join events. Please go to your profile settings to verify them.", "warning");
+    if (!isEmailVerified) {
+      showToast("Your email must be verified to join events. Please go to your profile settings to verify it.", "warning");
       return;
     }
 

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import Input from "../../components/common/Input";
 import Button from "../../components/common/Button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Loader2 } from "lucide-react";
 import { organizerService } from "../../services/organizerService";
 import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
@@ -54,16 +54,27 @@ const BecomeOrganizer = () => {
     try {
       setIsLoadingRequests(true);
       const response = await organizerService.getMyRequests();
-      const requests = response.data || response || [];
+      console.log("Raw Organizer Requests Response:", response);
+
+      let requests = [];
+      if (Array.isArray(response)) {
+        requests = response;
+      } else if (response && Array.isArray(response.data)) {
+        requests = response.data;
+      } else if (response?.data && Array.isArray(response.data.data)) {
+        requests = response.data.data;
+      }
+
+      console.log("Extracted Requests:", requests);
       setMyRequests(requests);
 
       // Determine if user can submit a new request
       // Requirements: if list is empty OR last entry status is 'rejected'
-      if (requests.length === 0) {
+      if (!Array.isArray(requests) || requests.length === 0) {
         setCanSubmit(true);
       } else {
-        const lastRequest = requests[0]; // Assuming latest is first
-        if (lastRequest.status === 'rejected' || lastRequest.status === 'Rejected') {
+        const lastRequest = requests[0];
+        if (lastRequest && (lastRequest.status === 'rejected' || lastRequest.status === 'Rejected')) {
           setCanSubmit(true);
         } else {
           setCanSubmit(false);
@@ -71,6 +82,15 @@ const BecomeOrganizer = () => {
       }
     } catch (err) {
       console.error("Failed to fetch my requests", err);
+      // Handle the cases where backend reports phone not verified despite user's claim
+      if (err.status === 403) {
+        const errorMsg = err.data?.error || err.message || "";
+        if (errorMsg.toLowerCase().includes('phone')) {
+          console.warn("Backend reported phone verification issue. User believes they are verified.");
+          // We'll allow submission even if list fetch fails, unless it's a hard block
+          setCanSubmit(true);
+        }
+      }
     } finally {
       setIsLoadingRequests(false);
     }
@@ -146,10 +166,9 @@ const BecomeOrganizer = () => {
       const userData = currentUser.data || currentUser;
 
       const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
-      const isPhoneVerified = userData.phone_verified_at || userData.is_phone_verified;
 
-      if (!isEmailVerified || !isPhoneVerified) {
-        showToast("Both Email and Phone must be verified to become an organizer. Please verify them in your Profile settings.", "warning");
+      if (!isEmailVerified) {
+        showToast("Your email must be verified to become an organizer. Please verify it in your Profile settings.", "warning");
         navigate('/profile');
         return;
       }
@@ -235,111 +254,126 @@ const BecomeOrganizer = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-8">
             {/* Page Title */}
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
               Become an Organizer
             </h1>
 
             {/* Form Card */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 sm:p-8 lg:px-10 lg:py-6">
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3">
-                Request Organizer Access
-              </h2>
-              <p className="text-gray-600 mb-4">
-                Fill out the form below to request organizer privileges.
-              </p>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-200 sm:p-8 lg:p-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+                    Submit Your Request
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {myRequests.length === 0
+                      ? "Tell us why you'd like to become an organizer."
+                      : "Your previous request was rejected. You can submit a new one below."}
+                  </p>
+                </div>
+                {myRequests.length > 0 && (
+                  <button
+                    onClick={() => navigate('/organizer-list')}
+                    className="text-purple-600 text-sm font-bold hover:underline flex items-center gap-1"
+                  >
+                    View History
+                  </button>
+                )}
+              </div>
 
-              {/* Recent Requests List */}
-              {myRequests.length > 0 && (
-                <div className="mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                  <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">
-                    Recent Requests
-                  </h3>
-                  <div className="space-y-3">
-                    {myRequests.map((req, index) => (
-                      <div key={req.id || index} className="flex items-center justify-between bg-white p-3 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-800 line-clamp-1">
-                            {req.reason}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {req.created_at ? new Date(req.created_at).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize ${req.status === 'approved' ? 'bg-green-100 text-green-700 border border-green-200' :
-                          req.status === 'rejected' ? 'bg-red-100 text-red-700 border border-red-200' :
-                            'bg-blue-100 text-blue-700 border border-blue-200'
-                          }`}>
-                          {req.status}
-                        </span>
-                      </div>
-                    ))}
+              {isLoadingRequests ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-purple-600 animate-spin mb-4" />
+                  <p className="text-gray-500">Processing...</p>
+                </div>
+              ) : !canSubmit ? (
+                <div className="p-8 text-center bg-blue-50/50 rounded-3xl border border-blue-100">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Loader2 className="w-8 h-8 text-blue-600 animate-pulse" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Request Pending</h3>
+                  <p className="text-gray-600 mb-6 max-w-sm mx-auto">
+                    You already have an organizer request being reviewed. You'll be notified once it's processed.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button
+                      onClick={() => navigate("/organizer-list")}
+                      className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+                    >
+                      Check Status
+                    </button>
+                    <button
+                      onClick={() => navigate("/dashboard")}
+                      className="px-6 py-2.5 bg-white text-gray-700 border border-gray-200 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Return Home
+                    </button>
                   </div>
                 </div>
-              )}
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Phone Number */}
+                  <div className="space-y-1">
+                    <Input
+                      label="Phone Number"
+                      type="tel"
+                      name="phone_no"
+                      placeholder="9800000000"
+                      value={formData.phone_no}
+                      onChange={handleChange}
+                      onBlur={handleBlur}
+                    />
+                    {touched.phone_no && errors.phone_no && (
+                      <p className="text-red-500 text-xs font-medium ml-1">
+                        {errors.phone_no}
+                      </p>
+                    )}
+                  </div>
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* Phone Number */}
-                <div>
-                  <Input
-                    label="Phone Number"
-                    type="tel"
-                    name="phone_no"
-                    placeholder="9800000000"
-                    value={formData.phone_no}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  {touched.phone_no && errors.phone_no && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.phone_no}
-                    </p>
-                  )}
-                </div>
-
-                {/* Reason for becoming an organizer */}
-                <div>
-                  <RichTextEditor
-                    label="Reason for becoming an organizer"
-                    value={formData.reason}
-                    onChange={(content) => setFormData({ ...formData, reason: content })}
-                    placeholder="Enter the reason for becoming an organizer"
-                    error={touched.reason ? errors.reason : ''}
-                  />
-                </div>
-
-                {/* Additional Information */}
-                <div>
-                  <RichTextEditor
-                    label="Additional Information"
-                    value={formData.additional_information}
-                    onChange={(content) => setFormData({ ...formData, additional_information: content })}
-                    placeholder="Any extra details you'd like to share"
-                  />
-                </div>
-
-                {/* Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/dashboard")}
-                    className="w-full sm:w-1/2 px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-
-                  <div className="w-full sm:w-1/2">
-                    <Button
-                      text={!canSubmit ? `Status: ${myRequests[0]?.status || 'Pending'}` : "Submit Request"}
-                      type="submit"
-                      fullWidth
-                      disabled={!canSubmit}
-                      className={!canSubmit ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-75" : ""}
+                  {/* Reason for becoming an organizer */}
+                  <div className="space-y-1">
+                    <RichTextEditor
+                      label="Reason for becoming an organizer"
+                      value={formData.reason}
+                      onChange={(content) => setFormData({ ...formData, reason: content })}
+                      placeholder="Why do you want to host events on our platform?"
+                      error={touched.reason ? errors.reason : ''}
                     />
                   </div>
-                </div>
-              </form>
+
+                  {/* Additional Information */}
+                  <div className="space-y-1">
+                    <RichTextEditor
+                      label="Additional Information (Optional)"
+                      value={formData.additional_information}
+                      onChange={(content) => setFormData({ ...formData, additional_information: content })}
+                      placeholder="Any additional details or portfolio links?"
+                    />
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/dashboard")}
+                      className="w-full sm:w-1/3 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+
+                    <div className="w-full sm:w-2/3">
+                      <Button
+                        text="Submit Application"
+                        type="submit"
+                        fullWidth
+                        className="py-3.5 shadow-lg shadow-purple-200"
+                      />
+                    </div>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

@@ -22,6 +22,7 @@ import ResetPasswordConfirm from "./pages/auth/ResetPasswordConfirm";
 import TermsAndPrivacy from "./pages/TermsAndPrivacy";
 
 import MyEvents from "./pages/user/MyEvents";
+import MyOrganizerRequests from "./pages/user/MyOrganizerRequests";
 import UserCreateEvent from "./pages/user/CreateEvent";
 import { ToastProvider } from "./context/ToastContext";
 import ToastContainer from "./components/common/ToastContainer";
@@ -48,6 +49,7 @@ function App() {
             <Route path="/user/create-event" element={<UserCreateEvent />} />
             <Route path="/change-password" element={<ResetPassword />} />
             <Route path="/become-organizer" element={<BecomeOrganizer />} />
+            <Route path="/organizer-list" element={<MyOrganizerRequests />} />
             <Route path="/event/:slug" element={<EventDetails />} />
 
             {/* Admin Routes */}
