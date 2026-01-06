@@ -19,6 +19,8 @@ import {
   User as UserIcon,
   ArrowLeft,
   Share2,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 import { normalizeEventData } from '../../utils/eventUtils';
@@ -64,7 +66,9 @@ const EventDetails = () => {
     const checkRegistration = async () => {
       // Need event ID and token to check
       const token = localStorage.getItem('token');
-      const currentEventId = slug || locationStateEvent?.id || event?.id;
+      // Prioritize numeric ID from event object or location state, fall back to slug only if it's likely an ID
+      const currentEventId = event?.id || locationStateEvent?.id || (slug && !isNaN(slug) ? slug : null);
+
       if (!currentEventId || !token) return;
 
       try {
@@ -392,11 +396,24 @@ const EventDetails = () => {
                         <p className="font-semibold text-gray-900">
                           {typeof event.organizer === 'object' ? event.organizer.name : event.organizer}
                         </p>
-                        {event.organizerBio && (
-                          <p className="text-sm text-gray-600">
-                            {event.organizerBio}
-                          </p>
-                        )}
+                        <div className="flex flex-col gap-1 mt-1 text-sm text-gray-600">
+                          {event.organizerEmail && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3.5 h-3.5" />
+                              <a href={`mailto:${event.organizerEmail}`} className="hover:text-purple-600 transition-colors">
+                                {event.organizerEmail}
+                              </a>
+                            </div>
+                          )}
+                          {event.organizerPhone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-3.5 h-3.5" />
+                              <a href={`tel:${event.organizerPhone}`} className="hover:text-purple-600 transition-colors">
+                                {event.organizerPhone}
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

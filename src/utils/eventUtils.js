@@ -108,6 +108,8 @@ export const normalizeEventData = (data) => {
         organizer: typeof event.organizer === 'object' ? (event.organizer.name || "LEC club") : (event.organizer || "LEC club"),
         organizerBio: event.organizer_bio || event.organizerBio || (typeof event.organizer === 'object' ? event.organizer.bio : null) || "LEC club is a designated club for organizing events.",
         organizerImage: typeof event.organizer === 'object' ? (event.organizer.image || event.organizer.profile_image || event.organizer.profile_picture) : (event.organizer_image || null),
+        organizerEmail: typeof event.organizer === 'object' ? event.organizer.email : event.organizer_email,
+        organizerPhone: typeof event.organizer === 'object' ? (event.organizer.phone || event.organizer.phonenumber) : (event.organizer_phone || event.phone),
 
         duration: event.duration || '',
 
