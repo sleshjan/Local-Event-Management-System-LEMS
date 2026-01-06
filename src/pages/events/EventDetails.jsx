@@ -307,8 +307,18 @@ const EventDetails = () => {
                       Organized By
                     </h2>
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
-                        <UserIcon className="w-6 h-6 text-white" />
+                      <div className="w-16 h-16 rounded-3xl overflow-hidden flex-shrink-0 border border-gray-100 bg-gray-50">
+                        {event.organizerImage ? (
+                          <img
+                            src={getImageUrl(event.organizerImage)}
+                            alt={typeof event.organizer === 'object' ? event.organizer.name : event.organizer}
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-full bg-purple-600 flex items-center justify-center ${event.organizerImage ? 'hidden' : 'flex'}`}>
+                          <UserIcon className="w-8 h-8 text-white" />
+                        </div>
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">

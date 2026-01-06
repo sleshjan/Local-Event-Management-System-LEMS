@@ -15,11 +15,9 @@ export const getImageUrl = (path) => {
   // 1. Handle absolute URLs pointing to our backend
   const backendOrigin = 'https://trendingvista.com/lems';
   if (cleanPath.startsWith(backendOrigin)) {
-    // In production (absolute API_BASE_URL), absolute URLs are generally fine as is
-    if (API_BASE_URL.startsWith('http')) return cleanPath;
-
-    // In development (proxy mode), strip the origin to force the request through the local proxy
-    cleanPath = cleanPath.substring(backendOrigin.length);
+    // Return absolute URL directly to ensure it works even if local proxy is missing mappings
+    // (e.g. /organizers/ path might not be proxied)
+    return cleanPath;
   }
 
   // 2. If it's a non-backend absolute URL (or blob/data), return as is

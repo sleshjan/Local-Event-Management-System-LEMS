@@ -52,7 +52,14 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
           <span className="text-gray-500">No Image</span>
         </div>
 
-        {/* Status Badge (if available in original data, normalizeEventData might pass it through) */}
+        {/* View Count Overlay */}
+        <div className="absolute top-3 left-3 z-10">
+          <div className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-lg bg-purple-600/70 backdrop-blur-lg border border-white/10 text-white shadow-sm">
+            <Eye className="w-3.5 h-3.5 text-white" />
+            <span className="text-sm font-bold">{displayEvent.view_count || 0}</span>
+          </div>
+        </div>
+
         {/* Status Badge */}
         {displayEvent.status && (
           <div className="absolute top-3 right-3 z-10">

@@ -75,7 +75,8 @@ export const normalizeEventData = (data) => {
         fullEndDate: event.end_datetime,
 
         // Location
-        location: event.city || event.location || "Chakupat",
+        location: event.map_address || event.address || event.city || event.location || "Chakupat",
+        map_address: event.map_address || "",
         venue: event.venue || "",
         street: event.street || "",
         coordinates: {
@@ -98,6 +99,7 @@ export const normalizeEventData = (data) => {
             ? (parseInt(event.total_seat, 10) - parseInt(event.remaining_seat, 10))
             : (event.attendees_count || event.attendees || 0),
         maxParticipants: event.total_seat || event.maxParticipants || 0,
+        view_count: event.view_count || 0,
 
         // Price
         price: event.seat_price !== undefined ? parseFloat(event.seat_price) : (event.price !== undefined ? parseFloat(event.price) : 0),
@@ -105,6 +107,7 @@ export const normalizeEventData = (data) => {
         // Organizer
         organizer: typeof event.organizer === 'object' ? (event.organizer.name || "LEC club") : (event.organizer || "LEC club"),
         organizerBio: event.organizer_bio || event.organizerBio || (typeof event.organizer === 'object' ? event.organizer.bio : null) || "LEC club is a designated club for organizing events.",
+        organizerImage: typeof event.organizer === 'object' ? (event.organizer.image || event.organizer.profile_image || event.organizer.profile_picture) : (event.organizer_image || null),
 
         duration: event.duration || '',
 
