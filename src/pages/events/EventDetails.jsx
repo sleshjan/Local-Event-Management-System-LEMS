@@ -56,9 +56,10 @@ const EventDetails = () => {
     };
 
     const checkRegistration = async () => {
-      // Need event ID to check
+      // Need event ID and token to check
+      const token = localStorage.getItem('token');
       const currentEventId = slug || locationStateEvent?.id || event?.id;
-      if (!currentEventId) return;
+      if (!currentEventId || !token) return;
 
       try {
         const registrations = await eventService.getMyRegistrations();
@@ -310,7 +311,7 @@ const EventDetails = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">
-                          {event.organizer}
+                          {typeof event.organizer === 'object' ? event.organizer.name : event.organizer}
                         </p>
                         {event.organizerBio && (
                           <p className="text-sm text-gray-600">

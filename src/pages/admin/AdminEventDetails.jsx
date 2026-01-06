@@ -252,7 +252,7 @@ const AdminEventDetails = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900">
-                          {event.organizer}
+                          {typeof event.organizer === 'object' ? event.organizer.name : event.organizer}
                         </p>
                         {event.organizerBio && (
                           <p className="text-sm text-gray-600">

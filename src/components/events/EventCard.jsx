@@ -56,7 +56,7 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
         {/* Status Badge */}
         {displayEvent.status && (
           <div className="absolute top-3 right-3 z-10">
-            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm capitalize border ${displayEvent.status.toLowerCase() === 'active'
+            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm capitalize border ${displayEvent.status.toLowerCase() === 'ongoing' || displayEvent.status.toLowerCase() === 'active'
               ? 'bg-green-500 text-white border-green-600'
               : displayEvent.status.toLowerCase() === 'upcoming'
                 ? 'bg-blue-500 text-white border-blue-600'

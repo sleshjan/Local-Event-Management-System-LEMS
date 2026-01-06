@@ -103,8 +103,8 @@ export const normalizeEventData = (data) => {
         price: event.seat_price !== undefined ? parseFloat(event.seat_price) : (event.price !== undefined ? parseFloat(event.price) : 0),
 
         // Organizer
-        organizer: event.organizer || "LEC club",
-        organizerBio: event.organizer_bio || event.organizerBio || "LEC club is a designated club for organizing events.",
+        organizer: typeof event.organizer === 'object' ? (event.organizer.name || "LEC club") : (event.organizer || "LEC club"),
+        organizerBio: event.organizer_bio || event.organizerBio || (typeof event.organizer === 'object' ? event.organizer.bio : null) || "LEC club is a designated club for organizing events.",
 
         duration: event.duration || '',
 
@@ -121,7 +121,7 @@ export const normalizeEventData = (data) => {
                     if (now < start) {
                         status = 'Upcoming';
                     } else if (now >= start && now <= end) {
-                        status = 'Active';
+                        status = 'Ongoing';
                     } else {
                         status = 'Completed';
                     }
@@ -132,10 +132,10 @@ export const normalizeEventData = (data) => {
                 // But usually events have end. Let's rely on backend fallback if invalid dates.
                 const start = new Date(event.start_datetime);
                 if (now >= start) {
-                    // If it started and no end time, maybe it's just 'Active' or 'Completed' depending on duration?
-                    // Let's assume Active for a day if no end time? 
-                    // For now, let's just say Active if start is passed.
-                    status = 'Active';
+                    // If it started and no end time, maybe it's just 'Ongoing' or 'Completed' depending on duration?
+                    // Let's assume Ongoing for a day if no end time? 
+                    // For now, let's just say Ongoing if start is passed.
+                    status = 'Ongoing';
                 }
             }
             return status;

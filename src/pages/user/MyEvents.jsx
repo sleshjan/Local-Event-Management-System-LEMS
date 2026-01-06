@@ -163,7 +163,8 @@ const MyEvents = () => {
     const getStatusBadge = (status) => {
         const styles = {
             'Upcoming': 'bg-blue-100 text-blue-800',
-            'Active': 'bg-green-100 text-green-800',
+            'Ongoing': 'bg-green-100 text-green-800',
+            'Active': 'bg-green-100 text-green-800', // Keep for compatibility if any old data exists
             'Completed': 'bg-gray-200 text-gray-800',
             'Cancelled': 'bg-red-100 text-red-800'
         };

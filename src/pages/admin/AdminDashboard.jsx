@@ -211,7 +211,7 @@ const AdminDashboard = () => {
                 </p>
               </div>
               <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
-                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Active Events</p>
+                <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider font-semibold">Ongoing Events</p>
                 <p className="text-2xl font-bold text-purple-600">
                   {events.length}
                 </p>
