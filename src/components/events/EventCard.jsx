@@ -85,9 +85,16 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
             <h3 className="text-lg font-bold text-gray-900 flex-1 line-clamp-2">
               {displayEvent.title}
             </h3>
-            {displayCategory && (
-              <InterestTag text={displayCategory} />
-            )}
+            <div className="flex flex-col items-end gap-1">
+              {displayCategory && (
+                <InterestTag text={displayCategory} />
+              )}
+              {displayEvent.categories && displayEvent.categories.length > 1 && (
+                <span className="inline-block px-3 py-1 bg-purple-50 text-purple-700 text-xs font-medium rounded-full">
+                  +{displayEvent.categories.length - 1} more
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Date */}

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from "../../components/common/Sidebar";
 import CancellationModal from "../../components/events/CancellationModal";
-import { Menu, X, Download, Eye } from "lucide-react";
+import ConfirmationModal from "../../components/common/ConfirmationModal";
+import { Menu, X, Download, Eye, AlertCircle } from "lucide-react";
 import { normalizeEventData } from '../../utils/eventUtils';
 import { userService } from "../../services/userService";
 import { eventService } from "../../services/eventService";
@@ -22,6 +23,10 @@ const MyEvents = () => {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [selectedEventId, setSelectedEventId] = useState(null);
     const [cancellationLoading, setCancellationLoading] = useState(false);
+
+    // Ticket Confirmation State
+    const [showTicketConfirmModal, setShowTicketConfirmModal] = useState(false);
+    const [pendingTicketAction, setPendingTicketAction] = useState(null); // { type: 'view' | 'download', regId: number }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -72,13 +77,19 @@ const MyEvents = () => {
                     const normEvent = normalizeEventData(ev);
                     const status = normEvent.status;
 
+                    // Check if ticket is viewed/downloaded.
+                    // Backend might not send this explicitly yet, so we rely on what we have + local interactions for now
+                    // If reg.ticket_generated or similar field existed, use it.
+                    // Assuming reg.ticket_viewed or similiar. For now using ticketGenerated from data if avail.
+                    const isTicketAccessed = reg.ticket_generated || reg.ticket_viewed || localStorage.getItem(`ticket_accessed_${reg.id}`) === 'true' || false;
+
                     return {
                         // Registration Details
                         registrationId: reg.id,
                         paymentStatus: reg.payment_status || 'Pending',
                         paymentMethod: reg.payment_method || 'Cash',
                         seatsBooked: reg.seats_booked || 1,
-                        ticketGenerated: reg.ticket_generated || false,
+                        ticketGenerated: isTicketAccessed,
 
                         // Event Details
                         id: ev.id,
@@ -102,41 +113,76 @@ const MyEvents = () => {
         fetchData();
     }, []);
 
-    const handleViewTicket = async (regId) => {
+    const processTicketAction = async (type, regId) => {
         try {
             const blob = await eventService.generateTicket(regId);
             const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-            window.open(url, '_blank');
 
-            // Optional: Mark as generated if we want to show it's been accessed, 
-            // but we won't disable the button.
+            if (type === 'view') {
+                window.open(url, '_blank');
+            } else {
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `ticket-${regId}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            }
+
+            // Mark as accessed locally to disable cancellation immediately
+            // Persist to localStorage since backend might not save it immediately
+            localStorage.setItem(`ticket_accessed_${regId}`, 'true');
             setEvents(prev => prev.map(ev =>
                 ev.registrationId === regId ? { ...ev, ticketGenerated: true } : ev
             ));
+
         } catch (error) {
-            console.error("View ticket failed:", error);
-            showToast("Failed to view ticket. " + (error.message || "Please try again."), "error");
+            console.error(`${type} ticket failed:`, error);
+            showToast(`Failed to ${type} ticket. ` + (error.message || "Please try again."), "error");
         }
     };
 
-    const handleDownloadTicket = async (regId) => {
-        try {
-            const blob = await eventService.generateTicket(regId);
-            const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `ticket-${regId}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Download ticket failed:", error);
-            showToast("Failed to download ticket. " + (error.message || "Please try again."), "error");
+    const handleTicketClick = (type, regId) => {
+        const event = events.find(e => e.registrationId === regId);
+        if (!event) return;
+
+        // If ticket already recognized as generated/viewed, or if we want to confirm every time?
+        // User asked: "once the ticket's been viewed or downloaded, it cant then the event cant be cancelled"
+        // So checking if it *has not* been generated yet to show the warning.
+        // If it *has* been generated, cancellation is already disabled, so no need to warn about disabling it again.
+        // However, if logic is exclusively frontend for now, we should check `ticketGenerated`
+
+        if (event.ticketGenerated) {
+            // Already accessed, just open/download directly
+            processTicketAction(type, regId);
+        } else {
+            // First time access, show warning
+            setPendingTicketAction({ type, regId });
+            setShowTicketConfirmModal(true);
         }
     };
+
+    const handleConfirmTicketAction = () => {
+        if (pendingTicketAction) {
+            processTicketAction(pendingTicketAction.type, pendingTicketAction.regId);
+            setShowTicketConfirmModal(false);
+            setPendingTicketAction(null);
+        }
+    };
+
+    const handleViewTicket = (regId) => handleTicketClick('view', regId);
+    const handleDownloadTicket = (regId) => handleTicketClick('download', regId);
 
     const handleCancelClick = (regId) => {
+        const event = events.find(e => e.registrationId === regId);
+        if (!event) return;
+
+        if (event.ticketGenerated) {
+            showToast("Cannot cancel booking. Ticket has already been accessed.", "error");
+            return;
+        }
+
         setSelectedEventId(regId);
         setShowCancelModal(true);
     };
@@ -303,7 +349,8 @@ const MyEvents = () => {
                                                             {event.status === 'Upcoming' && (
                                                                 <button
                                                                     onClick={() => handleCancelClick(event.registrationId)}
-                                                                    className="text-red-600 hover:text-red-900"
+                                                                    disabled={event.ticketGenerated}
+                                                                    className={`text-red-600 hover:text-red-900 ${event.ticketGenerated ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                                 >
                                                                     Cancel
                                                                 </button>
@@ -332,7 +379,7 @@ const MyEvents = () => {
                                                                     : 'text-green-600 hover:bg-green-50'
                                                                     }`}
                                                             >
-                                                                <Download className="w-5 h-5" />
+                                                                <Download className={`w-5 h-5 ${event.ticketGenerated ? '' : 'animate-pulse'}`} />
                                                             </button>
                                                         </div>
                                                     </td>
@@ -356,6 +403,17 @@ const MyEvents = () => {
                 onClose={() => setShowCancelModal(false)}
                 onConfirm={handleConfirmCancellation}
                 loading={cancellationLoading}
+            />
+
+            <ConfirmationModal
+                isOpen={showTicketConfirmModal}
+                onClose={() => setShowTicketConfirmModal(false)}
+                onConfirm={handleConfirmTicketAction}
+                title="Access Ticket?"
+                message="Attention: Viewing or downloading this ticket will confirm your attendance. Once accessed, you will NO LONGER be able to cancel this booking. Do you wish to proceed?"
+                confirmText="Yes, Access Ticket"
+                cancelText="Not Yet"
+                type="warning"
             />
         </div>
     );

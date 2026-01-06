@@ -3,6 +3,7 @@ import { useNavigate, useLocation, useParams } from "react-router-dom";
 import Sidebar from "../../components/common/Sidebar";
 import InterestTag from "../../components/common/InterestTag";
 import RegistrationModal from "../../components/events/RegistrationModal";
+import CancellationModal from "../../components/events/CancellationModal";
 import { eventService } from "../../services/eventService";
 import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
@@ -40,6 +41,11 @@ const EventDetails = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [registrationLoading, setRegistrationLoading] = useState(false);
 
+  // Cancellation State
+  const [registrationId, setRegistrationId] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancellationLoading, setCancellationLoading] = useState(false);
+
   // Get event data from navigation state if available
   const locationStateEvent = location.state?.event;
 
@@ -74,13 +80,19 @@ const EventDetails = () => {
         }
 
         // Check if any registration matches this event
-        const alreadyJoined = myRegs.some(reg => {
+        const matchingReg = myRegs.find(reg => {
           // Registration object might have event_id or nested event object
           const regEventId = reg.event_id || (reg.event && reg.event.id);
           return parseInt(regEventId) === parseInt(currentEventId);
         });
 
-        setIsRegistered(alreadyJoined);
+        if (matchingReg) {
+          setIsRegistered(true);
+          setRegistrationId(matchingReg.id);
+        } else {
+          setIsRegistered(false);
+          setRegistrationId(null);
+        }
       } catch (e) {
         console.error("Failed to check registration status", e);
       }
@@ -165,6 +177,25 @@ const EventDetails = () => {
     }
   };
 
+  const handleConfirmCancellation = async (data) => {
+    if (!registrationId) return;
+
+    setCancellationLoading(true);
+    try {
+      await eventService.cancelRegistration(registrationId, data);
+      showToast("Registration cancelled successfully.", "success");
+      setIsRegistered(false);
+      setRegistrationId(null);
+      setShowCancelModal(false);
+      // Refresh event data to update attendees count
+      await fetchEvent();
+    } catch (error) {
+      showToast(parseApiError(error), "error");
+    } finally {
+      setCancellationLoading(false);
+    }
+  };
+
   const handleBack = () => {
     navigate("/dashboard");
   };
@@ -177,14 +208,51 @@ const EventDetails = () => {
 
   // Determine button state
   const isEventEnded = event.status === 'Past' || event.status === 'Completed';
+  const isEventUpcoming = event.status === 'Upcoming';
+  // Use strict equality for 0 to handle potential string "0" from API
+  const isFree = event.price === 0 || event.price === "0" || event.price === null;
   const isEventFull = event.maxParticipants && (event.attendees >= event.maxParticipants);
-  const isRegisterDisabled = isEventEnded || isEventFull || isRegistered;
 
-  let buttonText = "Register";
-  if (event.price > 0) buttonText = "Buy Ticket";
-  if (isEventFull) buttonText = "Event Full";
-  if (isEventEnded) buttonText = "Event Ended";
-  if (isRegistered) buttonText = "Already Registered";
+  // Check local storage for ticket access if registered
+  const isTicketAccessed = registrationId && localStorage.getItem(`ticket_accessed_${registrationId}`) === 'true';
+
+  let buttonText = isFree ? "Register" : "Buy Ticket";
+  let buttonAction = handleJoinClick;
+  let isActionDisabled = false;
+  let buttonColorClass = "bg-purple-600 text-white hover:bg-purple-700";
+
+  // Logic Flow
+  if (isRegistered) {
+    if (isTicketAccessed) {
+      buttonText = "Ticket Accessed - Cannot Cancel";
+      isActionDisabled = true;
+      buttonColorClass = "bg-gray-300 text-gray-500 cursor-not-allowed";
+    } else if (!isEventUpcoming) {
+      // Can't cancel past/active events typically? or stick to strict "Upcoming" rule
+      buttonText = "Cannot Cancel (Event Started/Ended)";
+      isActionDisabled = true;
+      buttonColorClass = "bg-gray-300 text-gray-500 cursor-not-allowed";
+    } else {
+      buttonText = "Cancel Registration";
+      buttonAction = () => setShowCancelModal(true);
+      buttonColorClass = "bg-red-600 text-white hover:bg-red-700";
+    }
+  } else {
+    // Not registered
+    if (!isEventUpcoming) {
+      buttonText = "Event Not Available";
+      if (event.status === 'Ongoing') buttonText = "Event Ongoing";
+      if (event.status === 'Cancelled') buttonText = "Event Cancelled";
+      if (isEventEnded) buttonText = "Event Ended";
+      isActionDisabled = true;
+      buttonColorClass = "bg-gray-300 text-gray-500 cursor-not-allowed";
+    } else if (isEventFull) {
+      buttonText = "Event Full";
+      isActionDisabled = true;
+      buttonColorClass = "bg-gray-300 text-gray-500 cursor-not-allowed";
+    }
+    // Else default state (Register/Buy)
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -453,12 +521,10 @@ const EventDetails = () => {
                   {/* User Actions */}
                   <div className="space-y-3">
                     <button
-                      onClick={handleJoinClick}
-                      disabled={isRegisterDisabled}
+                      onClick={buttonAction}
+                      disabled={isActionDisabled}
                       className={`w-full px-6 py-3 font-medium rounded-xl transition-colors flex items-center justify-center gap-2
-                        ${isRegisterDisabled
-                          ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                          : "bg-purple-600 text-white hover:bg-purple-700"}
+                        ${buttonColorClass}
                       `}
                     >
                       {buttonText}
@@ -485,9 +551,15 @@ const EventDetails = () => {
       <RegistrationModal
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
-        onConfirm={handleRegister}
         event={event}
         loading={registrationLoading}
+      />
+
+      <CancellationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleConfirmCancellation}
+        loading={cancellationLoading}
       />
     </div>
   );
