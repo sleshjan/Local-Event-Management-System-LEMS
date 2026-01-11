@@ -409,7 +409,7 @@ const EventForm = ({ initialData = null, mode = 'create' }) => {
             <label className="cursor-pointer">
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
               <p className="text-gray-600 mb-2">Click to upload event image</p>
-              <p className="text-sm text-gray-500">PNG, JPG up to 10MB</p>
+              <p className="text-sm text-gray-500">PNG, JPG less than 2MB</p>
               <input
                 type="file"
                 accept="image/*"

@@ -27,6 +27,7 @@ import {
 
 import { normalizeEventData } from '../../utils/eventUtils';
 import { getImageUrl } from '../../services/api';
+import EventFeedback from '../../components/events/EventFeedback';
 
 const EventDetails = () => {
   const navigate = useNavigate();
@@ -664,6 +665,13 @@ const EventDetails = () => {
                 </div>
               </div>
             </div>
+
+            {/* Event Feedback Section - Only for completed events where user is registered */}
+            {event && isRegistered && new Date(event.fullEndDate || event.end_datetime) < new Date() && (
+              <div className="mt-12 border-t border-gray-100 pt-12">
+                <EventFeedback eventId={event.id} eventName={event.title} />
+              </div>
+            )}
 
             {/* Similar Events Section */}
             {similarEvents.length > 0 && (
