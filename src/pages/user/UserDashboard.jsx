@@ -131,22 +131,10 @@ const UserDashboard = () => {
       }
     };
 
-    const loadRelations = async () => {
-      try {
-        const response = await categoryService.getCategoryRelations();
-        const relations = response.data || response.relations || [];
-        setCategoryRelations(relations);
-      } catch (err) {
-        console.error("Failed to load category relations", err);
-      }
-    };
-
     loadProfile();
     loadEvents();
-    loadRelations();
   }, []);
 
-  // Helper to calculate relevance score
   // Helper to calculate relevance score
   const calculateRelevance = (event) => {
     if (!userInterests || userInterests.length === 0) return 0;
@@ -162,7 +150,7 @@ const UserDashboard = () => {
         .replace(/-+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    // Check for exact and related matches (Score: 1.0 for match, or Relation score)
+    // Check for exact matches only (Score: 1.0 for match)
     let maxRelatedness = 0;
 
     eventCategories.forEach(eventCat => {
@@ -174,20 +162,9 @@ const UserDashboard = () => {
           ? (interest.slug || normalizeSlug(interest.name))
           : normalizeSlug(interest);
 
-        // 1. Exact Name/Slug Match (Score: 1.0)
+        // Exact Name/Slug Match (Score: 1.0)
         if (eventCat.toLowerCase() === interestName.toLowerCase() || eventSlug === interestSlug) {
-          maxRelatedness = Math.max(maxRelatedness, 1.0);
-          return;
-        }
-
-        // 2. Related Match (Score: Relatedness Score from AI Matrix)
-        const relation = categoryRelations.find(rel =>
-          (rel.category_a === eventSlug && rel.category_b === interestSlug) ||
-          (rel.category_b === eventSlug && rel.category_a === interestSlug)
-        );
-
-        if (relation && relation.relatedness > maxRelatedness) {
-          maxRelatedness = relation.relatedness;
+          maxRelatedness = 1.0;
         }
       });
     });

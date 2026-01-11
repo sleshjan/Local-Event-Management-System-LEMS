@@ -146,12 +146,7 @@ const EventDetails = () => {
 
     const loadSimilarEvents = async () => {
       try {
-        // 1. Fetch relations
-        const relResponse = await categoryService.getCategoryRelations();
-        const relations = relResponse.data || relResponse.relations || [];
-        setCategoryRelations(relations);
-
-        // 2. Fetch all events using robust extraction
+        // Fetch all events using robust extraction
         const eventsResponse = await eventService.getAllEvents();
         let eventsData = [];
 
@@ -189,7 +184,7 @@ const EventDetails = () => {
 
         const formattedEvents = eventsData.map(normalizeEventData);
 
-        // 3. Current event categories (normalized slugs)
+        // Current event categories (normalized slugs)
         if (event) {
           const normalizeSlug = (str) =>
             (typeof str === 'string' ? str : '')
@@ -210,19 +205,13 @@ const EventDetails = () => {
                 currentSlugs.forEach(cSlug => {
                   if (eSlug === cSlug) {
                     maxScore = 1.0;
-                  } else {
-                    const rel = relations.find(r =>
-                      (r.category_a === eSlug && r.category_b === cSlug) ||
-                      (r.category_b === eSlug && r.category_a === cSlug)
-                    );
-                    if (rel && rel.relatedness > maxScore) maxScore = rel.relatedness;
                   }
                 });
               });
 
               return { ...e, similarity: maxScore };
             })
-            .filter(e => e.similarity > 0.05) // Inclusive threshold
+            .filter(e => e.similarity > 0) // Only exact matches
             .sort((a, b) => b.similarity - a.similarity)
             .slice(0, 3); // Top 3
 
