@@ -12,10 +12,10 @@ const Toast = ({ id, message, type, onClose, duration }) => {
     }, [id, duration, onClose]);
 
     const icons = {
-        success: <CheckCircle className="w-5 h-5 text-green-500" />,
-        error: <XCircle className="w-5 h-5 text-red-500" />,
-        warning: <AlertCircle className="w-5 h-5 text-yellow-500" />,
-        info: <Info className="w-5 h-5 text-blue-500" />,
+        success: <CheckCircle className="w-7 h-7 text-green-500" />,
+        error: <XCircle className="w-7 h-7 text-red-500" />,
+        warning: <AlertCircle className="w-7 h-7 text-yellow-500" />,
+        info: <Info className="w-7 h-7 text-blue-500" />,
     };
 
     const styles = {
@@ -26,11 +26,11 @@ const Toast = ({ id, message, type, onClose, duration }) => {
     };
 
     return (
-        <div className={`flex items-center gap-3 p-4 rounded-xl border shadow-lg transition-all animate-in slide-in-from-right-full ${styles[type] || styles.info}`}>
+        <div className={`flex items-center gap-4 p-5 rounded-xl border shadow-lg transition-all animate-in slide-in-from-right-full ${styles[type] || styles.info}`}>
             <div className="shrink-0">
                 {icons[type] || icons.info}
             </div>
-            <p className="text-sm font-medium flex-1">
+            <p className="text-lg font-medium flex-1 leading-relaxed">
                 {message}
             </p>
             <button
@@ -38,7 +38,7 @@ const Toast = ({ id, message, type, onClose, duration }) => {
                 className="p-1 hover:bg-black/5 rounded-lg transition-colors"
                 aria-label="Close"
             >
-                <X className="w-4 h-4 opacity-50" />
+                <X className="w-5 h-5 opacity-50" />
             </button>
         </div>
     );

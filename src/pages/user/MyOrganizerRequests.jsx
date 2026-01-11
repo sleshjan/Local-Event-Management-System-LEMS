@@ -175,7 +175,7 @@ const MyOrganizerRequests = () => {
                                         </div>
 
                                         <div className={`transition-all duration-300 ${isStatusExpanded ? 'opacity-100 max-h-40' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                                            <p className="text-gray-500 text-sm mb-4">
+                                            <p className="text-gray-500 text-sm">
                                                 {statusState.message}
                                             </p>
 

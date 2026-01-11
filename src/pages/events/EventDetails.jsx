@@ -93,6 +93,11 @@ const EventDetails = () => {
         if (matchingReg) {
           setIsRegistered(true);
           setRegistrationId(matchingReg.id);
+
+          // Check if ticket is generated from API logic
+          if (matchingReg.is_ticket_generated || matchingReg.ticket_generated) {
+            localStorage.setItem(`ticket_accessed_${matchingReg.id}`, 'true');
+          }
         } else {
           setIsRegistered(false);
           setRegistrationId(null);
@@ -157,7 +162,8 @@ const EventDetails = () => {
     const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
 
     if (!isEmailVerified) {
-      showToast("Your email must be verified to join events. Please go to your profile settings to verify it.", "warning");
+      showToast("You need a verified email for registration. Verification email has been sent. Please check your Gmail to verify.", "info");
+      // navigate('/profile'); // Removed redirection as per request
       return;
     }
 
@@ -570,6 +576,7 @@ const EventDetails = () => {
         onClose={() => setShowRegisterModal(false)}
         event={event}
         loading={registrationLoading}
+        onConfirm={handleRegister}
       />
 
       <CancellationModal

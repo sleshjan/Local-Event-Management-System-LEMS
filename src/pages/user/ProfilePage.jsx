@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Save } from 'lucide-react';
+import { ArrowLeft, Camera, Save, ShieldCheck } from 'lucide-react';
 import { authService } from '../../services/authService';
 import { userService } from '../../services/userService';
 import { getImageUrl, parseApiError } from '../../services/api';
@@ -156,6 +156,13 @@ const ProfilePage = () => {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+
+        // Prevent changing verified phone number
+        if (name === 'phone_number' && user?.is_phone_verified) {
+            showToast("Your phone number is verified and cannot be changed.", "error");
+            return;
+        }
+
         setFormData(prev => {
             const newData = { ...prev, [name]: value };
 
@@ -201,6 +208,16 @@ const ProfilePage = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Phone Validation
+        if (formData.phone_number) {
+            const phoneRegex = /^9\d{9}$/; // Starts with 9, followed by 9 digits (total 10)
+            if (!phoneRegex.test(formData.phone_number)) {
+                showToast("Please enter a valid 10-digit mobile number starting with 9.", "error");
+                return;
+            }
+        }
+
         setLoading(true);
         try {
             // Extract interest IDs to preserve them
@@ -214,20 +231,39 @@ const ProfilePage = () => {
 
             const updatedUserResponse = await userService.updateProfile(updatePayload);
 
-            // Refetch profile to ensure we have the latest data/format from backend
-            const refreshedProfile = await userService.getProfile();
-            const newData = refreshedProfile.data || refreshedProfile;
+            // Refetch profile to check updates
+            let refreshedProfile = await userService.getProfile();
+            let newData = refreshedProfile.data || refreshedProfile;
 
-            setUser(newData);
+            // Robust Auto-Verify Logic
+            // We check two conditions to trigger verification:
+            // 1. The user entered a phone number AND they were not verified before.
+            // 2. The user CHANGED their phone number (comparing new input vs old state).
+            // We do NOT rely on 'newData.is_phone_verified' immediately because the backend currently 
+            // returns 'true' erroneously after a profile update.
+            const phoneChanged = formData.phone_number !== user?.phone_number;
+            const needsVerification = !user?.is_phone_verified || phoneChanged;
 
-            // Check if phone was actually saved
-            if (formData.phone_number &&
-                newData.phone_number !== formData.phone_number &&
-                newData.phone !== formData.phone_number &&
-                newData.phone_no !== formData.phone_number &&
-                newData.phone_number !== formData.phone_number) {
-                // Field mismatch check
+            if (formData.phone_number && needsVerification) {
+                try {
+                    console.log("Triggering verification for:", formData.phone_number);
+                    await authService.verifyPhone(formData.phone_number);
+
+                    // Refetch again to get the final verified state
+                    refreshedProfile = await userService.getProfile();
+                    newData = refreshedProfile.data || refreshedProfile;
+
+                    showToast("Phone number updated and verification sent!", "success");
+                } catch (verifyErr) {
+                    console.error("Auto-verification failed", verifyErr);
+                    showToast("Profile updated, but phone verification failed.", "warning");
+                }
             }
+
+            // Update user in state and local storage
+            setUser(newData);
+            const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+            localStorage.setItem('user', JSON.stringify({ ...currentUser, ...newData }));
 
             setIsEditing(false);
             showToast("Profile updated successfully!", "success");
@@ -331,16 +367,25 @@ const ProfilePage = () => {
 
                                         {/* Phone Number Section */}
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                            <div className="flex gap-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Phone Number {user?.is_phone_verified && <span className="text-xs text-green-600 font-normal">(Verified)</span>}
+                                            </label>
+                                            <div className="flex gap-2 relative">
                                                 <input
                                                     type="text"
                                                     name="phone_number"
                                                     value={formData.phone_number || user?.phone_number || ''}
                                                     onChange={handleChange}
                                                     placeholder="Enter phone number"
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${user?.is_phone_verified ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
                                                 />
+                                                {user?.is_phone_verified && (
+                                                    <div className="absolute right-3 top-2.5 text-green-600" title="Verified">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div>

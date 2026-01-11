@@ -81,7 +81,7 @@ const MyEvents = () => {
                     // Backend might not send this explicitly yet, so we rely on what we have + local interactions for now
                     // If reg.ticket_generated or similar field existed, use it.
                     // Assuming reg.ticket_viewed or similiar. For now using ticketGenerated from data if avail.
-                    const isTicketAccessed = reg.ticket_generated || reg.ticket_viewed || localStorage.getItem(`ticket_accessed_${reg.id}`) === 'true' || false;
+                    const isTicketAccessed = reg.is_ticket_generated || reg.ticket_generated || reg.ticket_viewed || localStorage.getItem(`ticket_accessed_${reg.id}`) === 'true' || false;
 
                     return {
                         // Registration Details

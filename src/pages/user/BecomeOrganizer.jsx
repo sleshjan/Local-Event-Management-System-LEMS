@@ -9,6 +9,7 @@ import { userService } from "../../services/userService";
 import { parseApiError } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import RichTextEditor from "../../components/common/RichTextEditor";
+import ConfirmationModal from "../../components/common/ConfirmationModal";
 
 const BecomeOrganizer = () => {
   const navigate = useNavigate();
@@ -24,6 +25,7 @@ const BecomeOrganizer = () => {
   const [myRequests, setMyRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
   const [canSubmit, setCanSubmit] = useState(true);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
 
   // Get user interests from localStorage
   const [userInterests, setUserInterests] = useState([]);
@@ -35,19 +37,35 @@ const BecomeOrganizer = () => {
     }
 
     // specific effect to load phone number
-    const loadUserPhone = async () => {
+    const checkUserStatus = async () => {
       try {
         const user = await userService.getProfile();
         const userData = user.data || user;
+
+        // Check Email Verification
+        const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
+        if (!isEmailVerified) {
+          setShowVerificationModal(true);
+        }
+
         if (userData.phone_number) {
           setFormData(prev => ({ ...prev, phone_no: userData.phone_number }));
         }
+
+        // Only fetch requests if phone is verified to avoid 403
+        // Backend enforces strict phone verification for this endpoint
+        if (userData.is_phone_verified) {
+          fetchMyRequests();
+        } else {
+          setIsLoadingRequests(false);
+        }
+
       } catch (err) {
-        // Error load
+        setIsLoadingRequests(false);
       }
     };
-    loadUserPhone();
-    fetchMyRequests();
+    checkUserStatus();
+    // fetchMyRequests(); // Moved inside checkUserStatus to depend on verification
   }, []);
 
   const fetchMyRequests = async () => {
@@ -86,8 +104,9 @@ const BecomeOrganizer = () => {
       if (err.status === 403) {
         const errorMsg = err.data?.error || err.message || "";
         if (errorMsg.toLowerCase().includes('phone')) {
-          console.warn("Backend reported phone verification issue. User believes they are verified.");
-          // We'll allow submission even if list fetch fails, unless it's a hard block
+          // Suppress warning as we moved to Email-only verification, but backend might still be enforcing phone on GET.
+          // We allow submission effectively treating this as "no requests found/access denied due to old rule".
+          // console.warn("Backend reported phone verification issue. User believes they are verified."); 
           setCanSubmit(true);
         }
       }
@@ -168,8 +187,8 @@ const BecomeOrganizer = () => {
       const isEmailVerified = userData.email_verified_at || userData.is_email_verified;
 
       if (!isEmailVerified) {
-        showToast("Your email must be verified to become an organizer. Please verify it in your Profile settings.", "warning");
-        navigate('/profile');
+        showToast("You need a verified email to become an organizer. Verification email has been sent. Please check your Gmail to verify.", "info");
+        // navigate('/profile'); // Removed redirection as per request
         return;
       }
     } catch (err) {
@@ -358,12 +377,12 @@ const BecomeOrganizer = () => {
                     <button
                       type="button"
                       onClick={() => navigate("/dashboard")}
-                      className="w-full sm:w-1/3 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95"
+                      className="w-full sm:w-1/2 px-6 py-3.5 bg-gray-100 text-gray-700 font-bold rounded-2xl hover:bg-gray-200 transition-all active:scale-95"
                     >
                       Cancel
                     </button>
 
-                    <div className="w-full sm:w-2/3">
+                    <div className="w-full sm:w-1/2">
                       <Button
                         text="Submit Application"
                         type="submit"
@@ -378,7 +397,19 @@ const BecomeOrganizer = () => {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Email Verification Modal */}
+      <ConfirmationModal
+        isOpen={showVerificationModal}
+        onClose={() => setShowVerificationModal(false)}
+        onConfirm={() => navigate('/profile')}
+        title="Email Verification Required"
+        message="You need a verified email to submit an organizer request. Please verify your email in your profile settings or check your inbox."
+        confirmText="Go to Profile"
+        cancelText="Close"
+        type="info"
+      />
+    </div >
   );
 };
 
