@@ -6,6 +6,8 @@ import RegistrationModal from "../../components/events/RegistrationModal";
 import CancellationModal from "../../components/events/CancellationModal";
 import { eventService } from "../../services/eventService";
 import { userService } from "../../services/userService";
+import { categoryService } from "../../services/categoryService";
+import EventCard from "../../components/events/EventCard";
 import { parseApiError } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import {
@@ -38,6 +40,8 @@ const EventDetails = () => {
   // User specific state
   const [userInterests, setUserInterests] = useState([]);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [similarEvents, setSimilarEvents] = useState([]);
+  const [categoryRelations, setCategoryRelations] = useState([]);
 
   // Registration State
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -138,8 +142,101 @@ const EventDetails = () => {
 
   useEffect(() => {
     fetchEvent();
+
+    const loadSimilarEvents = async () => {
+      try {
+        // 1. Fetch relations
+        const relResponse = await categoryService.getCategoryRelations();
+        const relations = relResponse.data || relResponse.relations || [];
+        setCategoryRelations(relations);
+
+        // 2. Fetch all events using robust extraction
+        const eventsResponse = await eventService.getAllEvents();
+        let eventsData = [];
+
+        // Recursive helper to find any array of objects that look like events (from UserDashboard.jsx)
+        const findEventsInObject = (obj, depth = 0) => {
+          if (!obj || depth > 5) return null;
+          if (Array.isArray(obj)) {
+            if (obj.length === 0) return obj;
+            const first = obj[0];
+            if (first && typeof first === 'object' && (first.id !== undefined || first.title || first.name)) {
+              return obj;
+            }
+            return null;
+          }
+          if (typeof obj === 'object') {
+            const commonKeys = ['data', 'other', 'events', 'results'];
+            for (const key of commonKeys) {
+              if (obj[key]) {
+                const found = findEventsInObject(obj[key], depth + 1);
+                if (found) return found;
+              }
+            }
+            for (const key in obj) {
+              if (!commonKeys.includes(key) && Object.prototype.hasOwnProperty.call(obj, key)) {
+                const found = findEventsInObject(obj[key], depth + 1);
+                if (found) return found;
+              }
+            }
+          }
+          return null;
+        };
+
+        const found = findEventsInObject(eventsResponse);
+        if (found) eventsData = found;
+
+        const formattedEvents = eventsData.map(normalizeEventData);
+
+        // 3. Current event categories (normalized slugs)
+        if (event) {
+          const normalizeSlug = (str) =>
+            (typeof str === 'string' ? str : '')
+              .toLowerCase()
+              .replace(/[&\s]+/g, '-')
+              .replace(/-+/g, '-')
+              .replace(/^-+|-+$/g, '');
+
+          const currentSlugs = (event.categories || []).map(normalizeSlug);
+
+          const scored = formattedEvents
+            .filter(e => e.id !== event.id) // Exclude self
+            .map(e => {
+              let maxScore = 0;
+              const eSlugs = (e.categories || []).map(normalizeSlug);
+
+              eSlugs.forEach(eSlug => {
+                currentSlugs.forEach(cSlug => {
+                  if (eSlug === cSlug) {
+                    maxScore = 1.0;
+                  } else {
+                    const rel = relations.find(r =>
+                      (r.category_a === eSlug && r.category_b === cSlug) ||
+                      (r.category_b === eSlug && r.category_a === cSlug)
+                    );
+                    if (rel && rel.relatedness > maxScore) maxScore = rel.relatedness;
+                  }
+                });
+              });
+
+              return { ...e, similarity: maxScore };
+            })
+            .filter(e => e.similarity > 0.05) // Inclusive threshold
+            .sort((a, b) => b.similarity - a.similarity)
+            .slice(0, 3); // Top 3
+
+          setSimilarEvents(scored);
+        }
+      } catch (err) {
+        console.error("Failed to load similar events", err);
+      }
+    };
+
+    if (event) {
+      loadSimilarEvents();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, navigate]);
+  }, [slug, navigate, event?.id]);
 
   const handleJoinClick = async () => {
     // Check if user is logged in
@@ -567,6 +664,30 @@ const EventDetails = () => {
                 </div>
               </div>
             </div>
+
+            {/* Similar Events Section */}
+            {similarEvents.length > 0 && (
+              <div className="mt-16 border-t border-gray-100 pt-12">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-bold text-gray-900">Similar Events You Might Like</h2>
+                  <button
+                    onClick={() => navigate('/dashboard')}
+                    className="text-purple-600 font-semibold hover:text-purple-700 transition-colors"
+                  >
+                    View All
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {similarEvents.map((similarEvent) => (
+                    <EventCard
+                      key={similarEvent.id}
+                      event={similarEvent}
+                      role="user"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

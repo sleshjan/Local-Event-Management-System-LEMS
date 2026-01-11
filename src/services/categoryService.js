@@ -46,4 +46,27 @@ export const categoryService = {
         });
         return response;
     },
+
+    // Get relation prompt for AI (Admin only)
+    getRelationPrompt: async () => {
+        const response = await apiRequest("/category/relation-prompt", {
+            method: "GET",
+        });
+        return response;
+    },
+
+
+    // Get existing category relations
+    // NOTE: Assuming /api/category/relation might support GET, or returned as part of resources
+    getCategoryRelations: async () => {
+        try {
+            const response = await apiRequest("/category/relation", {
+                method: "GET",
+            });
+            return response;
+        } catch (error) {
+            console.error("Failed to fetch relations, might not be implemented yet on GET", error);
+            return { data: [] };
+        }
+    }
 };

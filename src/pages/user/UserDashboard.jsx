@@ -7,6 +7,7 @@ import Button from "../../components/common/Button";
 import { Menu, X } from "lucide-react";
 import { userService } from "../../services/userService";
 import { eventService } from "../../services/eventService";
+import { categoryService } from "../../services/categoryService";
 import UserProfileIcon from "../../components/common/UserProfileIcon";
 
 const UserDashboard = () => {
@@ -18,6 +19,7 @@ const UserDashboard = () => {
 
   // Get user interests from backend
   const [userInterests, setUserInterests] = useState([]);
+  const [categoryRelations, setCategoryRelations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -129,19 +131,92 @@ const UserDashboard = () => {
       }
     };
 
+    const loadRelations = async () => {
+      try {
+        const response = await categoryService.getCategoryRelations();
+        const relations = response.data || response.relations || [];
+        setCategoryRelations(relations);
+      } catch (err) {
+        console.error("Failed to load category relations", err);
+      }
+    };
+
     loadProfile();
     loadEvents();
+    loadRelations();
   }, []);
 
-  // Filter events based on search
-  const filteredEvents = events.filter(
-    (event) =>
-      event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      event.categories.some((cat) =>
-        cat.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-  );
+  // Helper to calculate relevance score
+  // Helper to calculate relevance score
+  const calculateRelevance = (event) => {
+    if (!userInterests || userInterests.length === 0) return 0;
+
+    const eventCategories = event.categories || [];
+    if (eventCategories.length === 0) return 0.05;
+
+    // Helper to normalize category name to slug consistently
+    const normalizeSlug = (str) =>
+      (typeof str === 'string' ? str : '')
+        .toLowerCase()
+        .replace(/[&\s]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
+    // Check for exact and related matches (Score: 1.0 for match, or Relation score)
+    let maxRelatedness = 0;
+
+    eventCategories.forEach(eventCat => {
+      const eventSlug = normalizeSlug(eventCat);
+
+      userInterests.forEach(interest => {
+        const interestName = typeof interest === 'object' ? interest.name : interest;
+        const interestSlug = typeof interest === 'object'
+          ? (interest.slug || normalizeSlug(interest.name))
+          : normalizeSlug(interest);
+
+        // 1. Exact Name/Slug Match (Score: 1.0)
+        if (eventCat.toLowerCase() === interestName.toLowerCase() || eventSlug === interestSlug) {
+          maxRelatedness = Math.max(maxRelatedness, 1.0);
+          return;
+        }
+
+        // 2. Related Match (Score: Relatedness Score from AI Matrix)
+        const relation = categoryRelations.find(rel =>
+          (rel.category_a === eventSlug && rel.category_b === interestSlug) ||
+          (rel.category_b === eventSlug && rel.category_a === interestSlug)
+        );
+
+        if (relation && relation.relatedness > maxRelatedness) {
+          maxRelatedness = relation.relatedness;
+        }
+      });
+    });
+
+    return maxRelatedness || 0.05; // Default low score
+  };
+
+  // Filter and Sort events based on search and relevance
+  const filteredEvents = events
+    .filter(
+      (event) =>
+        event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        event.categories.some((cat) =>
+          cat.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+    )
+    .map(event => ({
+      ...event,
+      relevanceScore: calculateRelevance(event)
+    }))
+    .sort((a, b) => {
+      // Prioritize relevance score
+      if (b.relevanceScore !== a.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+      // Then by date (newest first for same relevance)
+      return new Date(b.date) - new Date(a.date);
+    });
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">

@@ -57,6 +57,7 @@ export const eventService = {
       method: 'POST'
     });
   },
+
   // Get user's registrations
   getMyRegistrations: async () => {
     return await apiRequest('/event-registration/my');
@@ -75,5 +76,35 @@ export const eventService = {
   // Generate Ticket (user)
   generateTicket: async (id) => {
     return await apiRequest(`/event-registration/${id}/ticket`, { responseType: 'blob' });
+  },
+
+  // Upload event images (user feedback)
+  uploadEventImages: async (eventId, images) => {
+    const formData = new FormData();
+
+    // Validate and append images
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      const maxSize = 2048 * 1024; // 2048 KB in bytes
+
+      if (image.size > maxSize) {
+        throw new Error(`Image "${image.name}" exceeds 2 MB limit (${(image.size / 1024 / 1024).toFixed(2)} MB)`);
+      }
+
+      formData.append('images[]', image);
+    }
+
+    return await apiRequest(`/event/${eventId}/upload-images`, {
+      method: 'POST',
+      body: formData
+    });
+  },
+
+  // Submit event feedback (user)
+  submitEventFeedback: async (eventId, comment) => {
+    return await apiRequest(`/event/${eventId}/feedback`, {
+      method: 'POST',
+      body: { comment }
+    });
   },
 };

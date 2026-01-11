@@ -5,6 +5,7 @@ import AdminSidebar from '../../components/admin/AdminSidebar';
 import { categoryService } from '../../services/categoryService';
 import { parseApiError } from '../../services/api';
 import RichTextEditor from '../../components/common/RichTextEditor';
+import CategoryChangeNotification from '../../components/admin/CategoryChangeNotification';
 
 const EditCategory = () => {
     const { id } = useParams();
@@ -18,6 +19,8 @@ const EditCategory = () => {
     });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [showNotification, setShowNotification] = useState(false);
+    const [updatedCategoryName, setUpdatedCategoryName] = useState('');
 
     useEffect(() => {
         loadCategory();
@@ -62,16 +65,29 @@ const EditCategory = () => {
 
             const response = await categoryService.updateCategory(id, formData);
             setSuccess("Category updated successfully!");
+            setUpdatedCategoryName(formData.name);
 
-            // Navigate back after a short delay
+            // Show notification after a short delay
             setTimeout(() => {
-                navigate('/admin/categories');
-            }, 1500);
+                setShowNotification(true);
+            }, 500);
         } catch (err) {
             setError(parseApiError(err));
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleUpdateRelations = () => {
+        navigate('/admin/categories', { state: { openRelationsModal: true } });
+    };
+
+    const handleCloseNotification = () => {
+        setShowNotification(false);
+        // Navigate back after closing notification
+        setTimeout(() => {
+            navigate('/admin/categories');
+        }, 300);
     };
 
     return (
@@ -202,6 +218,15 @@ const EditCategory = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Category Change Notification */}
+            <CategoryChangeNotification
+                isOpen={showNotification}
+                onClose={handleCloseNotification}
+                onUpdateRelations={handleUpdateRelations}
+                categoryName={updatedCategoryName}
+                action="updated"
+            />
         </div>
     );
 };
