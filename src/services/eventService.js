@@ -100,11 +100,45 @@ export const eventService = {
     });
   },
 
+  // Get events by category
+  getEventsByCategory: async (slug) => {
+    const response = await apiRequest(`/event/category/${slug}`);
+    // Extract data from pagination structure if present
+    if (response?.data?.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+    // Fallback if structure changes or is distinct
+    if (response?.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+    return response;
+  },
+
+  // Get events by price range
+  getEventsByPrice: async (min, max) => {
+    const response = await apiRequest(`/event/price/${min}-${max}`);
+    // Extract data from pagination structure if present
+    if (response?.data?.data && Array.isArray(response.data.data)) {
+      return response.data.data;
+    }
+    // Fallback if structure changes or is distinct
+    if (response?.data && Array.isArray(response.data)) {
+      return response.data;
+    }
+    return response;
+  },
+
   // Submit event feedback (user)
   submitEventFeedback: async (eventId, comment) => {
     return await apiRequest(`/event/${eventId}/feedback`, {
       method: 'POST',
       body: { comment }
     });
+  },
+
+  // Get nearby events (filter)
+  getNearbyEvents: async ({ latitude, longitude, radius }) => {
+    const query = new URLSearchParams({ latitude, longitude, radius }).toString();
+    return await apiRequest(`/event?${query}`);
   },
 };

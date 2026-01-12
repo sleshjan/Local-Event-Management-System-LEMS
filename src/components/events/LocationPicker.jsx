@@ -105,6 +105,33 @@ const LocationPicker = ({ initialLat, initialLng, onLocationChange }) => {
                     <MapEventsHandler onLocationSelect={handleLocationSelect} />
                     <ChangeView center={position} />
                 </MapContainer>
+
+                {/* Use Current Location Button */}
+                <button
+                    type="button"
+                    onClick={() => {
+                        setIsLoading(true);
+                        if (!navigator.geolocation) {
+                            alert("Geolocation is not supported by your browser");
+                            setIsLoading(false);
+                            return;
+                        }
+                        navigator.geolocation.getCurrentPosition(
+                            (position) => {
+                                handleLocationSelect(position.coords.latitude, position.coords.longitude);
+                            },
+                            (error) => {
+                                console.error("Error getting location:", error);
+                                alert("Unable to retrieve your location");
+                                setIsLoading(false);
+                            }
+                        );
+                    }}
+                    className="absolute top-4 right-4 z-[400] bg-white p-2 rounded-lg shadow-md hover:bg-gray-50 border border-gray-200 text-purple-600 font-medium text-sm flex items-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="3" /></svg>
+                    Use My Location
+                </button>
             </div>
 
             {isLoading ? (

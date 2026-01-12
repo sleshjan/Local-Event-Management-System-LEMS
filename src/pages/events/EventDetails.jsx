@@ -184,6 +184,9 @@ const EventDetails = () => {
 
         const formattedEvents = eventsData.map(normalizeEventData);
 
+        // Deduplicate events by ID to prevent key warnings
+        const uniqueEvents = Array.from(new Map(formattedEvents.map(item => [item.id, item])).values());
+
         // Current event categories (normalized slugs)
         if (event) {
           const normalizeSlug = (str) =>
@@ -195,7 +198,7 @@ const EventDetails = () => {
 
           const currentSlugs = (event.categories || []).map(normalizeSlug);
 
-          const scored = formattedEvents
+          const scored = uniqueEvents
             .filter(e => e.id !== event.id) // Exclude self
             .map(e => {
               let maxScore = 0;
