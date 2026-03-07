@@ -15,9 +15,8 @@ export const getImageUrl = (path) => {
   // 1. Handle absolute URLs pointing to our backend
   const backendOrigin = 'https://evkhabars.com';
   if (cleanPath.startsWith(backendOrigin)) {
-    // Return absolute URL directly to ensure it works even if local proxy is missing mappings
-    // (e.g. /organizers/ path might not be proxied)
-    return cleanPath;
+    // Strip /api prefix from the path if present (backend sometimes returns full URL with /api/storage/...)
+    return cleanPath.replace(`${backendOrigin}/api/`, `${backendOrigin}/`);
   }
 
   // 2. If it's a non-backend absolute URL (or blob/data), return as is
