@@ -13,7 +13,7 @@ export const getImageUrl = (path) => {
   let cleanPath = path;
 
   // 1. Handle absolute URLs pointing to our backend
-  const backendOrigin = 'https://trendingvista.com/lems';
+  const backendOrigin = 'https://evkhabars.com';
   if (cleanPath.startsWith(backendOrigin)) {
     // Return absolute URL directly to ensure it works even if local proxy is missing mappings
     // (e.g. /organizers/ path might not be proxied)

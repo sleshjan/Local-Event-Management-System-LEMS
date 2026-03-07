@@ -9,7 +9,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'https://trendingvista.com/lems',
+        target: 'https://evkhabars.com',
         changeOrigin: true,
         secure: false,
         headers: {
@@ -17,7 +17,7 @@ export default defineConfig({
         }
       },
       '/storage': {
-        target: 'https://trendingvista.com/lems',
+        target: 'https://evkhabars.com',
         changeOrigin: true,
         secure: false,
         headers: {
@@ -25,7 +25,7 @@ export default defineConfig({
         }
       },
       '/event_cover_img': {
-        target: 'https://trendingvista.com/lems',
+        target: 'https://evkhabars.com',
         changeOrigin: true,
         secure: false,
         headers: {
@@ -33,7 +33,7 @@ export default defineConfig({
         }
       },
       '/profile_images': {
-        target: 'https://trendingvista.com/lems',
+        target: 'https://evkhabars.com',
         changeOrigin: true,
         secure: false,
         headers: {
