@@ -1,6 +1,26 @@
 {
   "rewrites": [
     {
+      "source": "/api/storage/:path*",
+      "destination": "https://evkhabars.com/api/storage/:path*"
+    },
+    {
+      "source": "/storage/:path*",
+      "destination": "https://evkhabars.com/api/storage/:path*"
+    },
+    {
+      "source": "/event_cover_img/:path*",
+      "destination": "https://evkhabars.com/event_cover_img/:path*"
+    },
+    {
+      "source": "/profile_images/:path*",
+      "destination": "https://evkhabars.com/profile_images/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://evkhabars.com/api/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

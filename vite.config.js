@@ -20,6 +20,7 @@ export default defineConfig({
         target: 'https://evkhabars.com',
         changeOrigin: true,
         secure: false,
+        rewrite: (path) => path.replace(/^\/storage/, '/api/storage'),
         headers: {
           "Bypass-Tunnel-Reminder": "true"
         }

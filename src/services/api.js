@@ -12,11 +12,10 @@ export const getImageUrl = (path) => {
 
   let cleanPath = path;
 
-  // 1. Handle absolute URLs pointing to our backend
+  // 1. Handle absolute URLs pointing to our backend — convert to relative path for proxy
   const backendOrigin = 'https://evkhabars.com';
   if (cleanPath.startsWith(backendOrigin)) {
-    // Strip /api prefix from the path if present (backend sometimes returns full URL with /api/storage/...)
-    return cleanPath.replace(`${backendOrigin}/api/`, `${backendOrigin}/`);
+    return cleanPath.replace(backendOrigin, '');
   }
 
   // 2. If it's a non-backend absolute URL (or blob/data), return as is
@@ -41,22 +40,16 @@ export const getImageUrl = (path) => {
     cleanPath = `/storage${cleanPath}`;
   }
 
-  // 6. Construct final URL
-  if (!API_BASE_URL.startsWith('http')) {
-    // Relative mode (Vite Proxy handles the base)
-    return cleanPath;
+  // 6. Return relative path to route through Vercel/Vite proxy
+  // Local: Vite dev server proxies /storage, /profile_images, etc. 
+  // Prod: Vercel rewrite rules proxy /storage, /profile_images, etc.
+  // We prepend /api because the backend generally expects /api/storage if not handled by root rewrites.
+  // Actually, based on Vercel rules, we can just return /api + cleanPath if cleanPath is /storage.
+  if (cleanPath.startsWith('/storage')) {
+    return `/api${cleanPath}`;
   }
-
-  // Absolute mode (Production/Vercel)
-  try {
-    const urlObj = new URL(API_BASE_URL);
-    // If API is at .../lems/api, files are at .../lems/storage
-    // We extract the base by removing /api from the pathname
-    const baseSubPath = urlObj.origin + urlObj.pathname.replace(/\/api\/?$/, '');
-    return `${baseSubPath}${cleanPath}`;
-  } catch (e) {
-    return cleanPath;
-  }
+  
+  return cleanPath;
 };
 
 /**
