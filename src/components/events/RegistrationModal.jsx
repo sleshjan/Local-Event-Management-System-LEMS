@@ -37,11 +37,17 @@ const RegistrationModal = ({ isOpen, onClose, onConfirm, event, loading }) => {
 
                     {/* Payment Method Field */}
                     <div>
-                        <label className="block text-sm font-medium mb-1">Payment Method</label>
+                        <label className="block text-sm font-medium mb-1">
+                            Payment Method
+                            {(!event.price || event.price === 0 || event.price === "0") && (
+                                <span className="ml-2 text-xs text-green-600 font-bold">(Free Event)</span>
+                            )}
+                        </label>
                         <select
                             value={paymentMethod}
                             onChange={(e) => setPaymentMethod(e.target.value)}
-                            className="w-full border rounded p-2"
+                            className="w-full border rounded p-2 disabled:bg-gray-100 disabled:text-gray-500"
+                            disabled={!event.price || event.price === 0 || event.price === "0"}
                         >
                             <option value="cash">Cash</option>
                         </select>
