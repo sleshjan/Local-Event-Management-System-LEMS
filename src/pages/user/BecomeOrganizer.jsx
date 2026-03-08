@@ -16,7 +16,6 @@ const BecomeOrganizer = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
-    phone_no: "",
     reason: "",
     additional_information: "",
   });
@@ -36,7 +35,6 @@ const BecomeOrganizer = () => {
       setUserInterests(JSON.parse(storedInterests));
     }
 
-    // specific effect to load phone number
     const checkUserStatus = async () => {
       try {
         const user = await userService.getProfile();
@@ -48,31 +46,19 @@ const BecomeOrganizer = () => {
           setShowVerificationModal(true);
         }
 
-        if (userData.phone_number) {
-          setFormData(prev => ({ ...prev, phone_no: userData.phone_number }));
-        }
-
-        // Only fetch requests if phone is verified to avoid 403
-        // Backend enforces strict phone verification for this endpoint
-        if (userData.is_phone_verified) {
-          fetchMyRequests();
-        } else {
-          setIsLoadingRequests(false);
-        }
+        fetchMyRequests();
 
       } catch (err) {
         setIsLoadingRequests(false);
       }
     };
     checkUserStatus();
-    // fetchMyRequests(); // Moved inside checkUserStatus to depend on verification
   }, []);
 
   const fetchMyRequests = async () => {
     try {
       setIsLoadingRequests(true);
       const response = await organizerService.getMyRequests();
-      console.log("Raw Organizer Requests Response:", response);
 
       let requests = [];
       if (Array.isArray(response)) {
@@ -83,7 +69,6 @@ const BecomeOrganizer = () => {
         requests = response.data.data;
       }
 
-      console.log("Extracted Requests:", requests);
       setMyRequests(requests);
 
       // Determine if user can submit a new request
@@ -100,24 +85,14 @@ const BecomeOrganizer = () => {
       }
     } catch (err) {
       console.error("Failed to fetch my requests", err);
-      // Handle the cases where backend reports phone not verified despite user's claim
-      if (err.status === 403) {
-        const errorMsg = err.data?.error || err.message || "";
-        if (errorMsg.toLowerCase().includes('phone')) {
-          // Suppress warning as we moved to Email-only verification, but backend might still be enforcing phone on GET.
-          // We allow submission effectively treating this as "no requests found/access denied due to old rule".
-          // console.warn("Backend reported phone verification issue. User believes they are verified."); 
-          setCanSubmit(true);
-        }
+      // Backend might return 403 if there's a strict old rule on this endpoint
+      // We still want to let them submit if the profile says they are verified
+      if (err.status === 403 || err.status === 401) {
+        setCanSubmit(true);
       }
     } finally {
       setIsLoadingRequests(false);
     }
-  };
-
-  const validatePhone = (phone) => {
-    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
-    return phoneRegex.test(phone) && phone.replace(/\D/g, "").length >= 10;
   };
 
   const handleChange = (e) => {
@@ -136,33 +111,15 @@ const BecomeOrganizer = () => {
     }
   };
 
-  const handleBlur = (e) => {
-    const { name } = e.target;
-    setTouched({
-      ...touched,
-      [name]: true,
-    });
-    validateField(name, formData[name]);
-  };
-
   const validateField = (name, value) => {
     let error = "";
 
     switch (name) {
-      case "phone_no":
-        if (!value) {
-          error = "Phone number is required";
-        } else if (!validatePhone(value)) {
-          error = "Please enter a valid phone number";
-        }
-        break;
       case "reason":
-        if (!value.trim()) error = "Reason is required";
-        else if (value.trim().length < 10)
-          error = "Reason must be at least 10 characters";
+        if (!value || !value.trim() || value === "<p><br></p>") error = "Reason is required";
         break;
       case "additional_information":
-        // Optional field, simplistic validation if needed
+        // Optional field
         break;
       default:
         break;
@@ -188,16 +145,14 @@ const BecomeOrganizer = () => {
 
       if (!isEmailVerified) {
         showToast("You need a verified email to become an organizer. Verification email has been sent. Please check your Gmail to verify.", "info");
-        // navigate('/profile'); // Removed redirection as per request
         return;
       }
     } catch (err) {
-      // Error check
       showToast("Failed to verify account status. Please try again.", "error");
       return;
     }
 
-    const fieldNames = ["phone_no", "reason", "additional_information"];
+    const fieldNames = ["reason", "additional_information"];
     const newErrors = {};
     let hasErrors = false;
 
@@ -333,24 +288,6 @@ const BecomeOrganizer = () => {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {/* Phone Number */}
-                  <div className="space-y-1">
-                    <Input
-                      label="Phone Number"
-                      type="tel"
-                      name="phone_no"
-                      placeholder="9800000000"
-                      value={formData.phone_no}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                    />
-                    {touched.phone_no && errors.phone_no && (
-                      <p className="text-red-500 text-xs font-medium ml-1">
-                        {errors.phone_no}
-                      </p>
-                    )}
-                  </div>
-
                   {/* Reason for becoming an organizer */}
                   <div className="space-y-1">
                     <RichTextEditor

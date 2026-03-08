@@ -88,10 +88,10 @@ const MyOrganizerRequests = () => {
 
         } catch (err) {
             console.error("Failed to fetch organizer history", err);
-            if (err.status === 403 && err.data?.error?.toLowerCase().includes('phone')) {
+            if (err.status === 403 || err.status === 401) {
                 setStatusState({
                     canSubmit: true,
-                    message: "Profile incomplete. Please update details.",
+                    message: "Ready to submit your first request.",
                     buttonText: "New Request",
                     isApproved: false
                 });

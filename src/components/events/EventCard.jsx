@@ -101,14 +101,19 @@ const EventCard = ({ event, role = 'user', onDelete }) => {
           <div className="flex items-start gap-2 text-gray-600">
             <Calendar className="w-4 h-4 shrink-0 mt-0.5" />
             <div className="flex flex-col text-sm leading-relaxed font-medium">
-              {/* 
-                  normalizeEventData provides 'date' and 'time' already formatted.
-                  We can use that, or re-format fullStartDate if we want a range.
-                  The user asked for "accurate" date. 
-                  displayEvent.date is like "Saturday, January 3, 2026"
-               */}
-              <span>{displayEvent.date}</span>
-              {displayEvent.time && <span className="text-xs text-gray-500">{displayEvent.time}</span>}
+              <div>
+                <span className="text-xs text-purple-600 uppercase font-bold tracking-wider mr-1">Starts:</span>
+                <span>{displayEvent.date}</span>
+                {displayEvent.time && <span className="ml-1 text-xs text-gray-500">{displayEvent.time}</span>}
+              </div>
+              
+              {displayEvent.endDate && (
+                <div className="mt-0.5">
+                  <span className="text-xs text-purple-500 uppercase font-bold tracking-wider mr-1">Ends:</span>
+                  <span>{displayEvent.endDate}</span>
+                  {displayEvent.endTime && <span className="ml-1 text-xs text-gray-500">{displayEvent.endTime}</span>}
+                </div>
+              )}
             </div>
           </div>
 

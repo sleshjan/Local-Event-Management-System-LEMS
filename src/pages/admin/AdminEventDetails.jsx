@@ -234,7 +234,7 @@ const AdminEventDetails = () => {
                       About This Event
                     </h2>
                     <div
-                      className="text-gray-700 leading-relaxed prose prose-purple max-w-none"
+                      className="text-gray-700 leading-relaxed prose prose-purple max-w-none break-words overflow-hidden"
                       dangerouslySetInnerHTML={{ __html: event.description }}
                     />
                   </div>

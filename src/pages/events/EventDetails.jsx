@@ -462,7 +462,7 @@ const EventDetails = () => {
                       About This Event
                     </h2>
                     <div
-                      className="text-gray-700 leading-relaxed prose prose-purple max-w-none"
+                      className="text-gray-700 leading-relaxed prose prose-purple max-w-none break-words overflow-hidden"
                       dangerouslySetInnerHTML={{ __html: event.description }}
                     />
                   </div>
@@ -678,9 +678,9 @@ const EventDetails = () => {
                   </button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {similarEvents.map((similarEvent) => (
+                  {similarEvents.map((similarEvent, index) => (
                     <EventCard
-                      key={similarEvent.id}
+                      key={similarEvent.id || `similar-${index}`}
                       event={similarEvent}
                       role="user"
                     />
