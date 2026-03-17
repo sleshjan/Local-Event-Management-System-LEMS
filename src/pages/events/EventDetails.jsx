@@ -92,7 +92,7 @@ const EventDetails = () => {
         const matchingReg = myRegs.find(reg => {
           // Registration object might have event_id or nested event object
           const regEventId = reg.event_id || (reg.event && reg.event.id);
-          return parseInt(regEventId) === parseInt(currentEventId);
+          return parseInt(regEventId) === parseInt(currentEventId) && reg.status !== 'cancelled';
         });
 
         if (matchingReg) {
